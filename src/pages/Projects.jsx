@@ -1,63 +1,8 @@
-// import { useEffect, useState } from "react"
-// import { getProjects } from "../services/projects"
-
-// export default function Projects() {
-//   const [projects, setProjects] = useState([])
-//   const [loading, setLoading] = useState(true)
-//   const [error, setError] = useState("")
-//   const [search, setSearch] = useState("")
-
-//   useEffect(() => {
-//     getProjects()
-//       .then((data) => setProjects(data))
-//       .catch((err) => {
-//         console.error("載入專案失敗：", err)
-//         setError("無法取得專案列表")
-//       })
-//       .finally(() => setLoading(false))
-//   }, [])
-
-//   return (
-//     <div className="p-4" style={{ maxWidth: "100%", margin: "0 auto" }}>
-//       <div className="flex items-center justify-between mb-4">
-//         <h1 className="text-2xl font-bold">專案列表</h1>
-//         <input
-//           type="text"
-//           placeholder="搜尋專案..."
-//           className="border px-2 py-1 rounded"
-//           value={search}
-//           onChange={(e) => setSearch(e.target.value)}
-//         />
-//       </div>
-
-//       {loading && <p>載入中...</p>}
-//       {error && <p className="text-red-500">{error}</p>}
-
-//       <div className="grid gap-3">
-//         {projects
-//           .filter((p) =>
-//             p.name.toLowerCase().includes(search.toLowerCase())
-//           )
-//           .map((project) => (
-//             <div
-//               key={project.id}
-//               className="p-4 border rounded bg-white shadow"
-//             >
-//               <h2 className="text-lg font-semibold">{project.name}</h2>
-//               <p className="text-sm text-gray-600">狀態：{project.status}</p>
-//             </div>
-//           ))}
-//       </div>
-//     </div>
-//   )
-// }
-
-
 import { useState } from "react"
 import ProjectCard from "../components/ProjectCard"
 import Modal from "../components/Modal"
+import StagementEditor from "../components/StagementEditor"
 
-// 模擬初始專案資料
 const initialProjects = [
   {
     id: "1",
@@ -66,6 +11,10 @@ const initialProjects = [
     status: "進行中",
     createdAt: "2025-06-01T00:00:00.000Z",
     updatedAt: "2025-06-03T12:00:00.000Z",
+    stagements: [
+      { name: "階段1", tasks: [] },
+      { name: "階段2", tasks: [] },
+    ],
   },
   {
     id: "2",
@@ -74,6 +23,9 @@ const initialProjects = [
     status: "已完成",
     createdAt: "2025-05-15T00:00:00.000Z",
     updatedAt: "2025-05-20T00:00:00.000Z",
+    stagements: [
+      { name: "階段1", tasks: [] },
+    ],
   },
 ]
 
@@ -84,10 +36,15 @@ export default function Projects() {
   const [newProjectName, setNewProjectName] = useState("")
   const [newProjectDescription, setNewProjectDescription] = useState("")
   const [newStagements, setNewStagements] = useState(1)
+  const [selectedProject, setSelectedProject] = useState(null)
 
   const handleAddProject = () => {
     if (!newProjectName.trim()) return
     const now = new Date().toISOString()
+    const stagementsArr = Array.from({ length: newStagements }, (_, i) => ({
+      name: `階段${i + 1}`,
+      tasks: [],
+    }))
     const newProject = {
       id: Date.now().toString(),
       name: newProjectName,
@@ -95,7 +52,7 @@ export default function Projects() {
       status: "進行中",
       createdAt: now,
       updatedAt: now,
-      stagements: newStagements,
+      stagements: stagementsArr,
     }
     setProjects([newProject, ...projects])
     setNewProjectName("")
@@ -108,78 +65,133 @@ export default function Projects() {
   )
 
   return (
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">專案列表</h1>
-        <div className="flex gap-2 px-4">
-          <input
-            type="text"
-            placeholder="搜尋專案..."
-            className="border px-2 py-1 rounded"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          </div>
-          <div className="flex gap-2 px-4">
-          <button
-            onClick={() => setShowModal(true)}
-            className="bg-blue-600 text-white px-2 py-1 rounded"
-            text="新增專案"
-          >
-            新增專案
-          </button>
-        </div>
+    <div className="bg-gradient-to-br from-blue-50 to-white min-h-screen py-10 px-4">
+      {/* 頁面標題 */}
+      <header className="mb-10">
+        <h1 className="text-2xl font-extrabold text-blue-900 tracking-tight flex items-center gap-4 drop-shadow-sm">
+          <span className="inline-block bg-blue-100 text-blue-700 rounded-full px-8 py-4 shadow border border-blue-200">
+            專案管理
+          </span>
+        </h1>
+        <div className="h-1 w-24 bg-blue-300 rounded mt-4" />
+      </header>
+      <div className="flex flex-col md:flex-row gap-10 max-w-7xl mx-auto bg-white rounded-2xl shadow-sm p-10 border border-blue-100">
+        {/* 專案列表 */}
+        <aside className="w-full md:w-[500px] flex-shrink-0">
+          <section className="bg-white rounded-2xl shadow-md p-8 border border-blue-100">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+              <h2 className="text-2xl font-bold text-blue-800 tracking-wide">專案列表</h2>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="搜尋專案..."
+                  className="border border-blue-200 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-100 outline-none transition text-base"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+                <button
+                  onClick={() => setShowModal(true)}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold shadow hover:bg-blue-700 transition text-base"
+                  text="新增專案"
+                >
+                  新增專案
+                </button>
+              </div>
+            </div>
+            <div className="grid gap-4">
+              {filteredProjects.length === 0 && (
+                <p className="text-gray-400 text-center py-8">找不到符合的專案</p>
+              )}
+              {filteredProjects.map((project) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  onClick={() => setSelectedProject(project)}
+                />
+              ))}
+            </div>
+          </section>
+        </aside>
+        {/* 階段與任務設定 */}
+        <main className="flex-1 w-full max-w-3xl">
+          <section className=" min-h-[420px]">
+            {selectedProject ? (
+              <StagementEditor
+                project={selectedProject}
+                onUpdate={updatedProject => {
+                  setProjects(projects.map(p => p.id === updatedProject.id ? updatedProject : p));
+                }}
+              />
+            ) : (
+              <div className="text-gray-400 text-center mt-24 text-lg">
+                請選擇一個專案進行階段與任務設定
+              </div>
+            )}
+          </section>
+        </main>
       </div>
-
-      <modal open={showModal} onClose={() => setShowModal(false)}>
-        <h2 className="text-xl font-semibold mb-4">新增專案</h2>
-        <div className="space-y-2">
-          <input
-            type="text"
-            placeholder="專案名稱"
-            className="border px-2 py-1 rounded w-full"
-            value={newProjectName}
-            onChange={(e) => setNewProjectName(e.target.value)}
-          />
-          <textarea
-            placeholder="專案描述"
-            className="border px-2 py-1 rounded w-full"
-            rows="3"
-            value={newProjectDescription}
-            onChange={(e) => setNewProjectDescription(e.target.value)}
-          />
-          <input
-            type="number"
-            placeholder="專案階段數量"
-            className="border px-2 py-1 rounded w-full"
-            value={newStagements}
-            onChange={(e) => setNewStagements(Number(e.target.value))}
-          />
-          <div className="flex justify-end gap-2">
-            <button
-              onClick={() => setShowModal(false)}
-              className="bg-gray-300 px-4 py-2 rounded"
-            >
-              取消
-            </button>
-            <button
-              onClick={handleAddProject}
-              className="bg-blue-600 text-white px-4 py-2 rounded"
-            >
-              儲存專案
-            </button>
+      {/* Modal */}
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)}>
+        <div className="bg-white rounded-2xl shadow-2xl p-10 w-full max-w-lg mx-auto border border-blue-100">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="bg-blue-100 rounded-full p-3">
+              <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-blue-700">新增專案</h2>
           </div>
+          <form className="space-y-6">
+            <div>
+              <label className="block text-gray-700 font-medium mb-1">專案名稱</label>
+              <input
+                type="text"
+                placeholder="請輸入專案名稱"
+                className="w-full border border-blue-300 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 px-4 py-2 rounded-lg outline-none transition"
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 font-medium mb-1">專案描述</label>
+              <textarea
+                placeholder="請輸入專案描述"
+                className="w-full border border-blue-300 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 px-4 py-2 rounded-lg outline-none transition resize-none"
+                rows="3"
+                value={newProjectDescription}
+                onChange={(e) => setNewProjectDescription(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 font-medium mb-1">專案階段數量</label>
+              <input
+                type="number"
+                min={1}
+                placeholder="請輸入階段數量"
+                className="w-full border border-blue-300 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 px-4 py-2 rounded-lg outline-none transition"
+                value={newStagements}
+                onChange={(e) => setNewStagements(Number(e.target.value))}
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="px-6 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition font-medium"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleAddProject}
+                className="px-6 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+              >
+                儲存專案
+              </button>
+            </div>
+          </form>
         </div>
-      </modal>
-
-      <div className="grid gap-3">
-        {filteredProjects.length === 0 && (
-          <p className="text-gray-500">找不到符合的專案</p>
-        )}
-        {filteredProjects.map((project) => (
-          <ProjectCard key={project.id} project={project} />  
-        ))}
-      </div>
+      </Modal>
     </div>
   )
 }
