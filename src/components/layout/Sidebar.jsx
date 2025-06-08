@@ -4,9 +4,9 @@ import { icons } from "../icons";
 
 // sidebar list
 const navItems = [
-  { name: "Dashboard", path: "/", icon: "dashboard" },
-  { name: "Projects", path: "/projects", icon: "project" },
-  { name: "Tasks", path: "/tasks", icon: "task" },
+  { name: "資訊儀錶板", path: "/", icon: "dashboard" },
+  { name: "專案設定", path: "/projects", icon: "project" },
+  { name: "專案任務", path: "/tasks", icon: "task" },
 ];
 
 const ProjectIcon = icons["sidebartitle"];

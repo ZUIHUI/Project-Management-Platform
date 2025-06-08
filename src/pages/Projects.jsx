@@ -1,68 +1,77 @@
-import { useState } from "react"
-import ProjectCard from "../components/ProjectCard"
-import Modal from "../components/Modal"
-import StagementEditor from "../components/StagementEditor"
-
-const initialProjects = [
-  {
-    id: "1",
-    name: "AI 專案平台",
-    description: "建立完整任務追蹤系統",
-    status: "進行中",
-    createdAt: "2025-06-01T00:00:00.000Z",
-    updatedAt: "2025-06-03T12:00:00.000Z",
-    stagements: [
-      { name: "階段1", tasks: [] },
-      { name: "階段2", tasks: [] },
-    ],
-  },
-  {
-    id: "2",
-    name: "UI 設計更新",
-    description: "重構元件與設計系統",
-    status: "已完成",
-    createdAt: "2025-05-15T00:00:00.000Z",
-    updatedAt: "2025-05-20T00:00:00.000Z",
-    stagements: [
-      { name: "階段1", tasks: [] },
-    ],
-  },
-]
+import { useEffect, useState } from "react";
+import {
+  fetchProjects,
+  createProject,
+  updateProject,
+  deleteProject,
+} from "../services/projects"; // 根據實際路徑調整
+import ProjectCard from "../components/ProjectCard";
+import Modal from "../components/Modal";
+import StagementEditor from "../components/StagementEditor";
 
 export default function Projects() {
-  const [projects, setProjects] = useState(initialProjects)
-  const [search, setSearch] = useState("")
-  const [showModal, setShowModal] = useState(false)
-  const [newProjectName, setNewProjectName] = useState("")
-  const [newProjectDescription, setNewProjectDescription] = useState("")
-  const [newStagements, setNewStagements] = useState(1)
-  const [selectedProject, setSelectedProject] = useState(null)
+  const [projects, setProjects] = useState([]);
+  const [search, setSearch] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [newProjectDescription, setNewProjectDescription] = useState("");
+  const [newStagements, setNewStagements] = useState(1);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleAddProject = () => {
-    if (!newProjectName.trim()) return
-    const now = new Date().toISOString()
+  // 載入專案列表
+  const loadProjects = async () => {
+    setLoading(true);
+    try {
+      const res = await fetchProjects();
+      setProjects(res.data);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProjects();
+  }, []);
+
+  // 新增專案
+  const handleAddProject = async () => {
+    if (!newProjectName.trim()) return;
     const stagementsArr = Array.from({ length: newStagements }, (_, i) => ({
       name: `階段${i + 1}`,
       tasks: [],
-    }))
-    const newProject = {
-      id: Date.now().toString(),
+    }));
+    await createProject({
       name: newProjectName,
       description: newProjectDescription || "尚未填寫描述",
       status: "進行中",
-      createdAt: now,
-      updatedAt: now,
       stagements: stagementsArr,
-    }
-    setProjects([newProject, ...projects])
-    setNewProjectName("")
-    setNewProjectDescription("")
-    setShowModal(false)
-  }
+      createdAt: new Date().toISOString(),
+    });
+    setShowModal(false);
+    setNewProjectName("");
+    setNewProjectDescription("");
+    setNewStagements(1);
+    loadProjects();
+  };
+
+  // 更新專案（傳給 StagementEditor 用）
+  const handleUpdateProject = async (updatedProject) => {
+    await updateProject(updatedProject.id, updatedProject);
+    loadProjects();
+    setSelectedProject(updatedProject);
+  };
+
+  // 刪除專案（可依需求加入）
+  const handleDeleteProject = async (id) => {
+    await deleteProject(id);
+    loadProjects();
+    setSelectedProject(null);
+  };
 
   const filteredProjects = projects.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
-  )
+  );
 
   return (
     <div className="bg-gradient-to-br from-blue-50 to-white min-h-screen py-10 px-4">
@@ -99,28 +108,30 @@ export default function Projects() {
               </div>
             </div>
             <div className="grid gap-4">
-              {filteredProjects.length === 0 && (
+              {loading ? (
+                <p className="text-gray-400 text-center py-8">載入中...</p>
+              ) : filteredProjects.length === 0 ? (
                 <p className="text-gray-400 text-center py-8">找不到符合的專案</p>
+              ) : (
+                filteredProjects.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
+                    onClick={() => setSelectedProject(project)}
+                    onDelete={() => handleDeleteProject(project.id)}
+                  />
+                ))
               )}
-              {filteredProjects.map((project) => (
-                <ProjectCard
-                  key={project.id}
-                  project={project}
-                  onClick={() => setSelectedProject(project)}
-                />
-              ))}
             </div>
           </section>
         </aside>
         {/* 階段與任務設定 */}
         <main className="flex-1 w-full max-w-3xl">
-          <section className=" min-h-[420px]">
+          <section className="min-h-[420px]">
             {selectedProject ? (
               <StagementEditor
                 project={selectedProject}
-                onUpdate={updatedProject => {
-                  setProjects(projects.map(p => p.id === updatedProject.id ? updatedProject : p));
-                }}
+                onUpdate={handleUpdateProject}
               />
             ) : (
               <div className="text-gray-400 text-center mt-24 text-lg">
@@ -141,7 +152,7 @@ export default function Projects() {
             </div>
             <h2 className="text-2xl font-bold text-blue-700">新增專案</h2>
           </div>
-          <form className="space-y-6">
+          <form className="space-y-6" onSubmit={e => { e.preventDefault(); handleAddProject(); }}>
             <div>
               <label className="block text-gray-700 font-medium mb-1">專案名稱</label>
               <input
@@ -182,8 +193,7 @@ export default function Projects() {
                 取消
               </button>
               <button
-                type="button"
-                onClick={handleAddProject}
+                type="submit"
                 className="px-6 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
               >
                 儲存專案
@@ -193,5 +203,5 @@ export default function Projects() {
         </div>
       </Modal>
     </div>
-  )
+  );
 }

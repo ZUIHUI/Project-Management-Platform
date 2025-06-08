@@ -9,7 +9,9 @@ export default function ProjectCard({ project, onClick }) {
           }`}>{project.status}</span>
       </div>
       <p className="text-sm text-gray-700 mb-1 ">{project.description}</p>
-      <p className="text-xs text-gray-400">建立時間:{new Date(project.createdAt).toLocaleDateString()}</p>
+      <div className="text-gray-400 text-sm mt-1">
+        建立時間：{project.createdAt ? new Date(project.createdAt).toLocaleString() : "未知"}
+      </div>
     </div>
   );
 }
