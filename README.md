@@ -2,37 +2,42 @@
 
 ## English
 
-This repository contains a simple project management platform built with React, Vite and Tailwind CSS. A minimal .NET 9 API is included under `ProjectManagementAPI` for server side features. The project demonstrates basic project and task management screens.
+This repository now follows a monorepo structure with separate frontend and backend applications under the `apps/` directory.
+
+- `apps/web` contains a React client powered by Vite and Tailwind CSS.
+- `apps/api` hosts a minimal Node.js API with a `/health` endpoint.
+- The legacy .NET 9 example remains under `ProjectManagementAPI` for reference.
 
 ### Requirements
 - Node.js 18+
-- .NET 9 SDK
+- (optional) .NET 9 SDK for the legacy API
 
 ### Getting Started
-1. Install dependencies with `npm install`.
-2. Run the frontend using `npm run dev`.
-3. Start the backend by navigating to `ProjectManagementAPI` and running `dotnet run`.
-4. Open `http://localhost:5173` in your browser.
+1. Run the frontend development server using `npm run dev:web`.
+2. Start the Node.js API with `npm run dev:api` (serves `http://localhost:3000/health`).
+3. Optionally run the legacy .NET API by navigating to `ProjectManagementAPI` and running `dotnet run`.
 
 ### Build
-Use `npm run build` to create a production build of the frontend.
+Use `npm run build:web` to create a production build of the frontend.
 
 ---
 
 ## 中文
 
-此倉庫是一個以 React、Vite 及 Tailwind CSS 製作的示範專案管理平台。`ProjectManagementAPI` 資料夾內包含以 .NET 9 撰寫的後端 API，用來提供簡易的專案與任務管理功能。
+本倉庫採用 monorepo 結構，前後端程式碼分別位於 `apps/` 目錄下：
+
+- `apps/web`：以 Vite、React 及 Tailwind CSS 建置的前端。
+- `apps/api`：提供 `/health` 端點的 Node.js 後端。
+- 舊的 .NET 9 範例仍保留於 `ProjectManagementAPI` 目錄供參考。
 
 ### 需求環境
 - Node.js 18 以上
-- .NET 9 SDK
+- （選用）.NET 9 SDK（啟動舊版 API）
 
 ### 快速開始
-1. 執行 `npm install` 安裝前端相依套件。
-2. 透過 `npm run dev` 啟動前端開發伺服器。
-3. 進入 `ProjectManagementAPI` 資料夾並執行 `dotnet run` 啟動後端。
-4. 在瀏覽器開啟 `http://localhost:5173` 以使用此平台。
+1. 執行 `npm run dev:web` 啟動前端開發伺服器。
+2. 執行 `npm run dev:api` 啟動 Node.js API（預設提供 `http://localhost:3000/health`）。
+3. 若需啟動舊版 .NET API，請進入 `ProjectManagementAPI` 並執行 `dotnet run`。
 
 ### 建置
-若需產生前端正式版本，可執行 `npm run build`。
-
+若需產生前端正式版本，可執行 `npm run build:web`。
