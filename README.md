@@ -15,8 +15,9 @@ This repository now follows a monorepo structure with separate frontend and back
 
 ### Getting Started
 1. Run the frontend development server using `npm run dev:web`.
-2. Start the Node.js API with `npm run dev:api` (serves `http://localhost:3000/api/v1/health`).
-3. Optionally run the legacy .NET API by navigating to `ProjectManagementAPI` and running `dotnet run`.
+2. Start the Node.js API with `npm run dev:api` (serves `http://localhost:4000/api/v1/health`).
+3. Open the web app at `http://localhost:3000`.
+4. Optionally run the legacy .NET API by navigating to `ProjectManagementAPI` and running `dotnet run`.
 
 ### Build
 Use `npm run build:web` to create a production build of the frontend.
@@ -38,8 +39,9 @@ Use `npm run build:web` to create a production build of the frontend.
 
 ### 快速開始
 1. 執行 `npm run dev:web` 啟動前端開發伺服器。
-2. 執行 `npm run dev:api` 啟動 Node.js API（預設提供 `http://localhost:3000/api/v1/health`）。
-3. 若需啟動舊版 .NET API，請進入 `ProjectManagementAPI` 並執行 `dotnet run`。
+2. 執行 `npm run dev:api` 啟動 Node.js API（預設提供 `http://localhost:4000/api/v1/health`）。
+3. 開啟 `http://localhost:3000` 查看前端畫面。
+4. 若需啟動舊版 .NET API，請進入 `ProjectManagementAPI` 並執行 `dotnet run`。
 
 ### 建置
 若需產生前端正式版本，可執行 `npm run build:web`。

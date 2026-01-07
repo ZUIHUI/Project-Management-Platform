@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import { routes } from "./modules/index.js";
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 const API_PREFIX = "/api/v1";
 
 const app = express();
