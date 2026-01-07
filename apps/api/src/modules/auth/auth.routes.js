@@ -1,32 +1,34 @@
+import { Router } from "express";
 import { randomUUID } from "node:crypto";
-import { json } from "../../server/response.js";
 
-export const registerAuthRoutes = (router, prefix) => {
-  router.post(`${prefix}/auth/login`, ({ res, body }) => {
-    const { email } = body;
-    if (!email) {
-      json(res, 400, { error: "Email is required" });
-      return;
-    }
-    json(res, 200, {
-      data: {
-        user: { id: randomUUID(), email },
-        accessToken: randomUUID(),
-        refreshToken: randomUUID(),
-      },
-    });
-  });
+const router = Router();
 
-  router.post(`${prefix}/auth/register`, ({ res, body }) => {
-    const { email, name } = body;
-    if (!email) {
-      json(res, 400, { error: "Email is required" });
-      return;
-    }
-    json(res, 201, {
-      data: {
-        user: { id: randomUUID(), email, name: name ?? "" },
-      },
-    });
+router.post("/auth/login", (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    res.status(400).json({ error: "Email is required" });
+    return;
+  }
+  res.json({
+    data: {
+      user: { id: randomUUID(), email },
+      accessToken: randomUUID(),
+      refreshToken: randomUUID(),
+    },
   });
-};
+});
+
+router.post("/auth/register", (req, res) => {
+  const { email, name } = req.body;
+  if (!email) {
+    res.status(400).json({ error: "Email is required" });
+    return;
+  }
+  res.status(201).json({
+    data: {
+      user: { id: randomUUID(), email, name: name ?? "" },
+    },
+  });
+});
+
+export default router;

@@ -1,7 +1,9 @@
-import { json } from "../../server/response.js";
+import { Router } from "express";
 
-export const registerHealthRoutes = (router, prefix) => {
-  router.get(`${prefix}/health`, ({ res }) => {
-    json(res, 200, { status: "ok", timestamp: new Date().toISOString() });
-  });
-};
+const router = Router();
+
+router.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+export default router;

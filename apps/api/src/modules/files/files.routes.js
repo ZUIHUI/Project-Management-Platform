@@ -1,26 +1,28 @@
+import { Router } from "express";
 import { randomUUID } from "node:crypto";
 import { store } from "../../data/store.js";
-import { json } from "../../server/response.js";
 
-export const registerFilesRoutes = (router, prefix) => {
-  router.get(`${prefix}/files`, ({ res }) => {
-    json(res, 200, { data: store.files });
-  });
+const router = Router();
 
-  router.post(`${prefix}/files`, ({ res, body }) => {
-    const { name, url } = body;
-    if (!name || !url) {
-      json(res, 400, { error: "File name and url are required" });
-      return;
-    }
-    const file = {
-      id: randomUUID(),
-      name,
-      url,
-      version: 1,
-      createdAt: new Date().toISOString(),
-    };
-    store.files.unshift(file);
-    json(res, 201, { data: file });
-  });
-};
+router.get("/files", (req, res) => {
+  res.json({ data: store.files });
+});
+
+router.post("/files", (req, res) => {
+  const { name, url } = req.body;
+  if (!name || !url) {
+    res.status(400).json({ error: "File name and url are required" });
+    return;
+  }
+  const file = {
+    id: randomUUID(),
+    name,
+    url,
+    version: 1,
+    createdAt: new Date().toISOString(),
+  };
+  store.files.unshift(file);
+  res.status(201).json({ data: file });
+});
+
+export default router;
