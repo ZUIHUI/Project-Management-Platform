@@ -1,0 +1,5 @@
+# Reduce recurring PR conflicts from generated artifacts
+apps/web/yarn.lock merge=ours
+
+# Prefer line-wise union for documentation drafts in conflict-heavy branches
+docs/*.md merge=union
