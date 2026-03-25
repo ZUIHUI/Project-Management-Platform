@@ -1,16 +1,34 @@
 import axiosInstance from "./axiosInstance";
 
-// 取得所有任務
-export const fetchTasks = () => axiosInstance.get("/tasks");
+export type IssuePayload = {
+  title: string;
+  description?: string;
+  priority?: "low" | "medium" | "high";
+  assigneeId?: string | null;
+  reporterId?: string | null;
+  dueDate?: string | null;
+};
 
-// 取得單一任務
-export const fetchTaskById = (id: string) => axiosInstance.get(`/tasks/${id}`);
+export const fetchIssuesByProject = (projectId: string) =>
+  axiosInstance.get(`/projects/${projectId}/issues`);
 
-// 新增任務
-export const createTask = (data: any) => axiosInstance.post("/tasks", data);
+export const fetchIssueById = (id: string) => axiosInstance.get(`/issues/${id}`);
 
-// 更新任務
-export const updateTask = (id: string, data: any) => axiosInstance.put(`/tasks/${id}`, data);
+export const createIssue = (projectId: string, data: IssuePayload) =>
+  axiosInstance.post(`/projects/${projectId}/issues`, data, {
+    headers: { "x-role": "member" },
+  });
 
-// 刪除任務
-export const deleteTask = (id: string) => axiosInstance.delete(`/tasks/${id}`);
+export const updateIssue = (id: string, data: Partial<IssuePayload>) =>
+  axiosInstance.patch(`/issues/${id}`, data, {
+    headers: { "x-role": "member" },
+  });
+
+export const transitionIssueStatus = (id: string, statusId: string) =>
+  axiosInstance.patch(
+    `/issues/${id}/status`,
+    { statusId },
+    {
+      headers: { "x-role": "member" },
+    },
+  );
