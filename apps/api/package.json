@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "node src/index.js"
+    "dev": "node src/index.js",
+    "test": "node scripts/smoke.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",
