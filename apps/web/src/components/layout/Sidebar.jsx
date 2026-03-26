@@ -12,7 +12,7 @@ const navItems = [
 
 const ProjectIcon = icons.sidebartitle;
 
-export default function Sidebar({ onLogout, currentUser }) {
+export default function Sidebar({ onLogout }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
@@ -27,7 +27,7 @@ export default function Sidebar({ onLogout, currentUser }) {
       className={`relative flex min-h-screen flex-col border-r border-slate-200 bg-gradient-to-b from-blue-700 to-blue-900 text-white shadow-xl transition-all duration-300 ${collapsed ? "w-16 px-2" : "w-64 px-4"} py-6`}
       style={{ zIndex: 20 }}
     >
-      <div className={`mb-6 flex items-center transition-all duration-300 ${collapsed ? "justify-center" : ""}`}>
+      <div className={`mb-10 flex items-center transition-all duration-300 ${collapsed ? "justify-center" : ""}`}>
         {!collapsed ? (
           <div className="ml-2 flex flex-1 items-center space-x-2">
             {ProjectIcon && (
@@ -46,14 +46,6 @@ export default function Sidebar({ onLogout, currentUser }) {
           <span className="text-lg font-bold">{collapsed ? "»" : "«"}</span>
         </button>
       </div>
-
-      {!collapsed ? (
-        <div className="mb-4 rounded-lg border border-blue-300/30 bg-blue-800/50 px-3 py-2">
-          <p className="text-xs text-blue-200">目前登入使用者</p>
-          <p className="mt-1 text-sm font-semibold text-white">{currentUser?.name || "未命名使用者"}</p>
-          <p className="text-xs text-blue-100">{currentUser?.email || "-"}</p>
-        </div>
-      ) : null}
 
       <nav className="flex-1 space-y-2">
         {navItems.map((item) => {
@@ -82,13 +74,12 @@ export default function Sidebar({ onLogout, currentUser }) {
 
       {!collapsed ? (
         <div className="space-y-2 border-t border-blue-500/40 pt-4">
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="block w-full rounded-lg border border-blue-300/30 px-3 py-2 text-left text-sm text-blue-100 transition hover:bg-blue-700"
+          <Link
+            to="/login"
+            className="block rounded-lg border border-blue-300/30 px-3 py-2 text-sm text-blue-100 transition hover:bg-blue-700"
           >
-            登出
-          </button>
+            切換登入帳號
+          </Link>
           <Link
             to="/register"
             className="block rounded-lg bg-white px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
@@ -97,6 +88,17 @@ export default function Sidebar({ onLogout, currentUser }) {
           </Link>
         </div>
       ) : null}
+
+      <div className={`mt-auto pt-6 ${collapsed ? "text-center text-xs text-blue-200" : "text-sm text-blue-100"}`}>
+        {!collapsed ? (
+          <div>
+            <div>© 2026 Project App</div>
+            <div className="opacity-70">v1.1.0</div>
+          </div>
+        ) : (
+          <span>©</span>
+        )}
+      </div>
     </aside>
   );
 }

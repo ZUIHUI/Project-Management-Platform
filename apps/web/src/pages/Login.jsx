@@ -1,22 +1,15 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 
-export default function Login({ onLoginSuccess }) {
+export default function Login() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: "", password: "" });
-  const [error, setError] = useState("");
 
   const handleSubmit = (event) => {
     event.preventDefault();
     if (!form.email.trim() || !form.password.trim()) {
-      setError("請輸入 Email 與密碼");
       return;
     }
-
-    onLoginSuccess?.({
-      name: form.email.split("@")[0] || "使用者",
-      email: form.email.trim(),
-    });
     navigate("/");
   };
 
@@ -24,7 +17,7 @@ export default function Login({ onLoginSuccess }) {
     <div className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white/95 p-8 shadow-xl backdrop-blur">
         <h1 className="text-2xl font-bold text-slate-900">歡迎回來</h1>
-        <p className="mt-2 text-sm text-slate-600">請先登入後再使用專案管理平台功能。</p>
+        <p className="mt-2 text-sm text-slate-600">登入後即可管理專案、任務與儀表板。</p>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <label className="block text-sm font-medium text-slate-700">
@@ -48,8 +41,6 @@ export default function Login({ onLoginSuccess }) {
               onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
             />
           </label>
-
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
           <button
             type="submit"
