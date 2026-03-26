@@ -1,7 +1,8 @@
 import axiosInstance from "./axiosInstance";
+import { projectService } from "../features/project/projectService";
 
-export const fetchProjects = () => axiosInstance.get("/projects");
-export const fetchProjectById = (id: string) => axiosInstance.get(`/projects/${id}`);
+export const fetchProjects = projectService.fetchProjects;
+export const fetchProjectById = projectService.fetchProjectById;
 
 export const createProject = (data: {
   key: string;
