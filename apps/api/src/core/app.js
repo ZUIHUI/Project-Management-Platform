@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import { API_PREFIX } from "../config/constants.js";
 import healthRoutes from "../domain/health/health.routes.js";
+import openapiRoutes from "../domain/health/openapi.routes.js";
 import projectRoutes from "../domain/project/project.routes.js";
 import issueRoutes from "../domain/issue/issue.routes.js";
 import dashboardRoutes from "../domain/dashboard/dashboard.routes.js";
@@ -24,6 +25,7 @@ export const createApp = () => {
   app.use(API_PREFIX, authRouter);
 
   app.use(API_PREFIX, healthRoutes);
+  app.use(API_PREFIX, openapiRoutes);
   app.use(API_PREFIX, requireAuth, projectRoutes);
   app.use(API_PREFIX, requireAuth, issueRoutes);
   app.use(API_PREFIX, requireAuth, dashboardRoutes);

@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { fetchProjects } from "../services/projects";
-import {
-  createIssue,
-  fetchIssuesByProject,
-  fetchWorkflowStatuses,
-  transitionIssueStatus,
-} from "../services/task";
+import { projectService } from "../features/project";
+import { issueService } from "../features/issue";
 
 const PRIORITY_OPTIONS = ["low", "medium", "high"];
 
@@ -34,7 +29,7 @@ export default function Tasks({ viewMode = "list" }) {
   useEffect(() => {
     const bootstrap = async () => {
       try {
-        const [projectsRes, statusesRes] = await Promise.all([fetchProjects(), fetchWorkflowStatuses()]);
+        const [projectsRes, statusesRes] = await Promise.all([projectService.fetchProjects(), issueService.fetchStatuses()]);
 
         const projectData = projectsRes.data?.data ?? [];
         setProjects(projectData);
@@ -62,7 +57,7 @@ export default function Tasks({ viewMode = "list" }) {
     }
 
     try {
-      const response = await fetchIssuesByProject(selectedProjectId, {
+      const response = await issueService.fetchIssuesByProject(selectedProjectId, {
         q: keyword || undefined,
         page: 1,
         pageSize: 100,
@@ -109,7 +104,7 @@ export default function Tasks({ viewMode = "list" }) {
     }
 
     try {
-      await createIssue(projectId, {
+      await issueService.createIssue(projectId, {
         title: form.title.trim(),
         description: form.description.trim() || undefined,
         priority: form.priority,
@@ -130,7 +125,7 @@ export default function Tasks({ viewMode = "list" }) {
     }
 
     try {
-      await transitionIssueStatus(issue.id, statuses[nextIndex].id);
+      await issueService.transitionIssueStatus(issue.id, statuses[nextIndex].id);
       await loadIssues(projectId);
     } catch (err) {
       setError(getErrorMessage(err, "狀態更新失敗，請確認流程轉換規則"));

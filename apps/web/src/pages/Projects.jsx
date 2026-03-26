@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { archiveProject, createMilestone, createProject, createSprint, fetchProjects } from "../services/projects";
+import { projectService } from "../features/project";
 
 export default function Projects() {
   const [projects, setProjects] = useState([]);
@@ -13,7 +13,7 @@ export default function Projects() {
 
   const loadProjects = useCallback(async () => {
     try {
-      const response = await fetchProjects();
+      const response = await projectService.fetchProjects();
       const list = response.data?.data ?? [];
       setProjects(list);
       if (!selectedProjectId && list.length > 0) {
@@ -45,7 +45,7 @@ export default function Projects() {
     }
 
     try {
-      await createProject({ ...newProject, ownerId: "user-pm" });
+      await projectService.createProject({ ...newProject, ownerId: "user-pm" });
       setNewProject({ key: "", name: "", description: "" });
       await loadProjects();
     } catch {
@@ -55,7 +55,7 @@ export default function Projects() {
 
   const handleArchive = async (projectId) => {
     try {
-      await archiveProject(projectId);
+      await projectService.archiveProject(projectId);
       await loadProjects();
     } catch {
       setError("封存失敗");
@@ -69,7 +69,7 @@ export default function Projects() {
     }
 
     try {
-      await createMilestone(selectedProjectId, { name: milestoneName.trim() });
+      await projectService.createMilestone(selectedProjectId, { name: milestoneName.trim() });
       setMilestoneName("");
       await loadProjects();
     } catch {
@@ -84,7 +84,7 @@ export default function Projects() {
     }
 
     try {
-      await createSprint(selectedProjectId, {
+      await projectService.createSprint(selectedProjectId, {
         name: sprintForm.name.trim(),
         goal: sprintForm.goal.trim() || undefined,
       });
