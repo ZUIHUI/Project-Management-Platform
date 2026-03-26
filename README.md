@@ -25,7 +25,6 @@ Use `npm run build:web` to create a production build of the frontend.
 The web app can be deployed to GitHub Pages via `.github/workflows/deploy-github-pages.yml`.
 - Expected URL format: `https://<github-username>.github.io/Project-Management-Platform/`
 - Production build runs in demo mode (`VITE_DEMO_MODE=true`) so the site works without backend hosting.
-- Uses `HashRouter`, so online routes are available via `#/projects` and `#/tasks` without 404 on refresh.
 
 
 ---
