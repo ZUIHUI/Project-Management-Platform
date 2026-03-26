@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
 import Tasks from "./pages/Tasks";
@@ -6,7 +6,7 @@ import MainLayout from "./components/layout/MainLayout";
 
 export default function App() {
   return (
-    <Router>
+    <HashRouter>
       <Routes>
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Dashboard />} />
@@ -14,7 +14,6 @@ export default function App() {
           <Route path="tasks" element={<Tasks />} />
         </Route>
       </Routes>
-    </Router>
+    </HashRouter>
   );
 }
-
