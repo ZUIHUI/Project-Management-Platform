@@ -25,7 +25,7 @@ export default function Tasks() {
         if (projectData.length > 0) {
           setProjectId(projectData[0].id);
         }
-      } catch (err) {
+      } catch {
         setError("無法載入專案清單");
       } finally {
         setLoading(false);
@@ -44,7 +44,7 @@ export default function Tasks() {
     try {
       const response = await fetchIssuesByProject(selectedProjectId);
       setIssues(response.data?.data ?? []);
-    } catch (err) {
+    } catch {
       setError("無法載入 Issue 清單");
     }
   };
@@ -71,7 +71,7 @@ export default function Tasks() {
       });
       setTitle("");
       await loadIssues(projectId);
-    } catch (err) {
+    } catch {
       setError("建立 Issue 失敗");
     }
   };
@@ -86,7 +86,7 @@ export default function Tasks() {
     try {
       await transitionIssueStatus(issue.id, nextStatus);
       await loadIssues(projectId);
-    } catch (err) {
+    } catch {
       setError("狀態更新失敗，請確認流程轉換規則");
     }
   };

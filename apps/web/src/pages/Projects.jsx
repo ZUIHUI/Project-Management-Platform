@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   archiveProject,
   createMilestone,
@@ -16,7 +16,7 @@ export default function Projects() {
   const [sprintName, setSprintName] = useState("");
   const [error, setError] = useState("");
 
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     try {
       const response = await fetchProjects();
       const list = response.data?.data ?? [];
@@ -27,11 +27,11 @@ export default function Projects() {
     } catch {
       setError("無法載入專案");
     }
-  };
+  }, [selectedProjectId]);
 
   useEffect(() => {
     loadProjects();
-  }, []);
+  }, [loadProjects]);
 
   const filtered = useMemo(
     () => projects.filter((project) => project.name.toLowerCase().includes(keyword.toLowerCase())),
