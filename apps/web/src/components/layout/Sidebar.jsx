@@ -72,13 +72,12 @@ export default function Sidebar({ onLogout }) {
 
       {!collapsed ? (
         <div className="space-y-2 border-t border-blue-500/40 pt-4">
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="block w-full rounded-lg border border-blue-300/30 px-3 py-2 text-left text-sm text-blue-100 transition hover:bg-blue-700"
+          <Link
+            to="/login"
+            className="block rounded-lg border border-blue-300/30 px-3 py-2 text-sm text-blue-100 transition hover:bg-blue-700"
           >
-            登出
-          </button>
+            切換登入帳號
+          </Link>
           <Link
             to="/register"
             className="block rounded-lg bg-white px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
@@ -92,7 +91,7 @@ export default function Sidebar({ onLogout }) {
         {!collapsed ? (
           <div>
             <div>© 2026 Project App</div>
-            <div className="opacity-70">v1.2.0</div>
+            <div className="opacity-70">v1.1.0</div>
           </div>
         ) : (
           <span>©</span>
