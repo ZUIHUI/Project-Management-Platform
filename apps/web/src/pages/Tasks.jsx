@@ -1,22 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { fetchProjects } from "../services/projects";
-import { fetchIssuesByProject, createIssue, transitionIssueStatus } from "../services/task";
-
-const STATUS_FLOW = [
-  { id: "todo", label: "Backlog" },
-  { id: "doing", label: "In Progress" },
-  { id: "done", label: "Done" },
-];
+import {
+  createIssue,
+  fetchIssuesByProject,
+  fetchWorkflowStatuses,
+  transitionIssueStatus,
+} from "../services/task";
 
 const PRIORITY_OPTIONS = ["low", "medium", "high"];
-const statusIndex = (statusId) => STATUS_FLOW.findIndex((status) => status.id === statusId);
+
+const getErrorMessage = (error, fallback) => {
+  const message = error?.response?.data?.error?.message;
+  return message || fallback;
+};
 
 export default function Tasks({ viewMode = "list" }) {
   const { projectId: routeProjectId } = useParams();
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState(routeProjectId ?? "");
   const [issues, setIssues] = useState([]);
+  const [statuses, setStatuses] = useState([]);
   const [selectedIssueId, setSelectedIssueId] = useState("");
   const [keyword, setKeyword] = useState("");
   const [form, setForm] = useState({ title: "", description: "", priority: "medium" });
@@ -28,22 +32,27 @@ export default function Tasks({ viewMode = "list" }) {
   }, [routeProjectId]);
 
   useEffect(() => {
-    const loadProjects = async () => {
+    const bootstrap = async () => {
       try {
-        const response = await fetchProjects();
-        const projectData = response.data?.data ?? [];
+        const [projectsRes, statusesRes] = await Promise.all([fetchProjects(), fetchWorkflowStatuses()]);
+
+        const projectData = projectsRes.data?.data ?? [];
         setProjects(projectData);
+
+        const workflowStatuses = (statusesRes.data?.data ?? []).sort((a, b) => a.order - b.order);
+        setStatuses(workflowStatuses);
+
         if (!routeProjectId && projectData.length > 0) {
           setProjectId(projectData[0].id);
         }
-      } catch {
-        setError("無法載入專案清單");
+      } catch (err) {
+        setError(getErrorMessage(err, "無法載入初始化資料"));
       } finally {
         setLoading(false);
       }
     };
 
-    loadProjects();
+    bootstrap();
   }, [routeProjectId]);
 
   const loadIssues = useCallback(async (selectedProjectId) => {
@@ -53,16 +62,20 @@ export default function Tasks({ viewMode = "list" }) {
     }
 
     try {
-      const response = await fetchIssuesByProject(selectedProjectId);
+      const response = await fetchIssuesByProject(selectedProjectId, {
+        q: keyword || undefined,
+        page: 1,
+        pageSize: 100,
+      });
       const list = response.data?.data ?? [];
       setIssues(list);
       if (list.length > 0) {
         setSelectedIssueId((currentId) => currentId || list[0].id);
       }
-    } catch {
-      setError("無法載入 Issue 清單");
+    } catch (err) {
+      setError(getErrorMessage(err, "無法載入 Issue 清單"));
     }
-  }, []);
+  }, [keyword]);
 
   useEffect(() => {
     loadIssues(projectId);
@@ -77,12 +90,15 @@ export default function Tasks({ viewMode = "list" }) {
 
   const groupedIssues = useMemo(
     () =>
-      STATUS_FLOW.map((status) => ({
+      statuses.map((status) => ({
         ...status,
+        label: status.name,
         items: filteredIssues.filter((issue) => issue.statusId === status.id),
       })),
-    [filteredIssues],
+    [statuses, filteredIssues],
   );
+
+  const statusIndex = useCallback((statusId) => statuses.findIndex((status) => status.id === statusId), [statuses]);
 
   const selectedIssue = useMemo(() => issues.find((issue) => issue.id === selectedIssueId), [issues, selectedIssueId]);
 
@@ -101,23 +117,23 @@ export default function Tasks({ viewMode = "list" }) {
       });
       setForm({ title: "", description: "", priority: "medium" });
       await loadIssues(projectId);
-    } catch {
-      setError("建立 Issue 失敗");
+    } catch (err) {
+      setError(getErrorMessage(err, "建立 Issue 失敗"));
     }
   };
 
   const moveIssue = async (issue, direction) => {
     const index = statusIndex(issue.statusId);
     const nextIndex = index + direction;
-    if (index < 0 || nextIndex < 0 || nextIndex >= STATUS_FLOW.length) {
+    if (index < 0 || nextIndex < 0 || nextIndex >= statuses.length) {
       return;
     }
 
     try {
-      await transitionIssueStatus(issue.id, STATUS_FLOW[nextIndex].id);
+      await transitionIssueStatus(issue.id, statuses[nextIndex].id);
       await loadIssues(projectId);
-    } catch {
-      setError("狀態更新失敗，請確認流程轉換規則");
+    } catch (err) {
+      setError(getErrorMessage(err, "狀態更新失敗，請確認流程轉換規則"));
     }
   };
 
@@ -198,7 +214,7 @@ export default function Tasks({ viewMode = "list" }) {
                         <p className="text-xs text-gray-500">Priority: {issue.priority}</p>
                         <div className="mt-2 flex gap-2">
                           <button type="button" onClick={() => moveIssue(issue, -1)} disabled={columnIndex === 0} className="rounded border px-2 py-1 text-xs disabled:opacity-40">←</button>
-                          <button type="button" onClick={() => moveIssue(issue, 1)} disabled={columnIndex === STATUS_FLOW.length - 1} className="rounded border px-2 py-1 text-xs disabled:opacity-40">→</button>
+                          <button type="button" onClick={() => moveIssue(issue, 1)} disabled={columnIndex === statuses.length - 1} className="rounded border px-2 py-1 text-xs disabled:opacity-40">→</button>
                         </div>
                       </div>
                     ))}

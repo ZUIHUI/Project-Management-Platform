@@ -14,16 +14,17 @@ router.get("/notifications", (req, res) => {
 });
 
 router.post("/notifications", (req, res) => {
-  const { userId, type, message } = req.body;
-  if (!message) {
-    return fail(res, 400, "message is required");
+  const { userId, type, message, payload } = req.body;
+  if (!message && !payload) {
+    return fail(res, 422, "message or payload is required");
   }
 
   const notification = {
     id: idFactory("noti"),
     userId: userId ?? null,
     type: type ?? "system",
-    message,
+    message: message ?? null,
+    payload: payload ?? null,
     read: false,
     createdAt: new Date().toISOString(),
   };

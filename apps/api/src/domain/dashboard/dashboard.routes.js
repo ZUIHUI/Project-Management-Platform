@@ -7,7 +7,7 @@ const router = Router();
 router.get("/dashboard", (req, res) => {
   const openIssues = db.issues.filter((issue) => issue.statusId !== "done");
   const overdueIssues = openIssues.filter(
-    (issue) => issue.dueDate && new Date(issue.dueDate).getTime() < Date.now(),
+    (issue) => (issue.dueAt ?? issue.dueDate) && new Date(issue.dueAt ?? issue.dueDate).getTime() < Date.now(),
   );
 
   const statusBreakdown = db.statuses.map((status) => ({
