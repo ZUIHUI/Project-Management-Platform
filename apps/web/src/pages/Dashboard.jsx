@@ -18,7 +18,7 @@ export default function Dashboard() {
       try {
         const response = await fetchDashboardData();
         setDashboard(response.data?.data ?? null);
-      } catch (err) {
+      } catch {
         setError("無法載入儀表板資料");
       } finally {
         setLoading(false);
