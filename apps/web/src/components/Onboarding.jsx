@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { safeStorage } from "../shared/storage";
 
 const steps = [
   {
@@ -24,14 +25,14 @@ export default function Onboarding() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const complete = localStorage.getItem("pmp-onboarding-complete");
+    const complete = safeStorage.get("pmp-onboarding-complete");
     if (!complete) {
       setVisible(true);
     }
   }, []);
 
   const finish = () => {
-    localStorage.setItem("pmp-onboarding-complete", "true");
+    safeStorage.set("pmp-onboarding-complete", "true");
     setVisible(false);
   };
 
@@ -67,7 +68,7 @@ export default function Onboarding() {
           前往專案設定
         </Link>
         <Link
-          to="/tasks"
+          to="/projects"
           className="bg-white text-blue-700 px-4 py-2 rounded border border-blue-300 hover:bg-blue-100"
         >
           前往專案任務

@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  archiveProject,
-  createMilestone,
-  createProject,
-  createSprint,
-  fetchProjects,
-} from "../services/projects";
+import { Link } from "react-router-dom";
+import { archiveProject, createMilestone, createProject, createSprint, fetchProjects } from "../services/projects";
 
 export default function Projects() {
   const [projects, setProjects] = useState([]);
@@ -13,7 +8,7 @@ export default function Projects() {
   const [newProject, setNewProject] = useState({ key: "", name: "", description: "" });
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [milestoneName, setMilestoneName] = useState("");
-  const [sprintName, setSprintName] = useState("");
+  const [sprintForm, setSprintForm] = useState({ name: "", goal: "" });
   const [error, setError] = useState("");
 
   const loadProjects = useCallback(async () => {
@@ -84,13 +79,16 @@ export default function Projects() {
 
   const handleCreateSprint = async (event) => {
     event.preventDefault();
-    if (!selectedProjectId || !sprintName.trim()) {
+    if (!selectedProjectId || !sprintForm.name.trim()) {
       return;
     }
 
     try {
-      await createSprint(selectedProjectId, { name: sprintName.trim() });
-      setSprintName("");
+      await createSprint(selectedProjectId, {
+        name: sprintForm.name.trim(),
+        goal: sprintForm.goal.trim() || undefined,
+      });
+      setSprintForm({ name: "", goal: "" });
       await loadProjects();
     } catch {
       setError("新增 Sprint 失敗");
@@ -100,13 +98,14 @@ export default function Projects() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold">Projects（嚴格重構版）</h1>
-        <p className="text-sm text-gray-600">支援 Project、Milestone、Sprint 的規格化資料流。</p>
+        <h1 className="text-2xl font-bold">Project Delivery Setup</h1>
+        <p className="text-sm text-gray-600">以主流流程管理：Project → Milestone → Sprint → Issues。</p>
       </header>
 
       {error ? <p className="rounded bg-red-50 p-2 text-sm text-red-600">{error}</p> : null}
 
       <section className="rounded-lg border bg-white p-4 shadow-sm">
+        <h2 className="mb-3 text-lg font-semibold">建立新專案（產品線/服務）</h2>
         <form className="grid gap-2 md:grid-cols-4" onSubmit={handleCreateProject}>
           <input
             className="rounded border px-3 py-2"
@@ -132,10 +131,10 @@ export default function Projects() {
         </form>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2">
-        <article className="rounded-lg border bg-white p-4 shadow-sm">
+      <section className="grid gap-4 xl:grid-cols-3">
+        <article className="rounded-lg border bg-white p-4 shadow-sm xl:col-span-1">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">專案列表</h2>
+            <h2 className="text-lg font-semibold">專案清單</h2>
             <input
               className="rounded border px-2 py-1 text-sm"
               placeholder="搜尋"
@@ -147,25 +146,15 @@ export default function Projects() {
             {filtered.map((project) => (
               <li
                 key={project.id}
-                className={`rounded border px-3 py-2 ${
-                  selectedProjectId === project.id ? "border-blue-500 bg-blue-50" : ""
-                }`}
+                className={`rounded border px-3 py-2 ${selectedProjectId === project.id ? "border-blue-500 bg-blue-50" : ""}`}
               >
-                <button
-                  type="button"
-                  className="w-full text-left"
-                  onClick={() => setSelectedProjectId(project.id)}
-                >
+                <button type="button" className="w-full text-left" onClick={() => setSelectedProjectId(project.id)}>
                   <div className="font-medium">
                     {project.key} - {project.name}
                   </div>
                   <div className="text-xs text-gray-500">狀態：{project.status}</div>
                 </button>
-                <button
-                  type="button"
-                  className="mt-2 rounded border px-2 py-1 text-xs"
-                  onClick={() => handleArchive(project.id)}
-                >
+                <button type="button" className="mt-2 rounded border px-2 py-1 text-xs" onClick={() => handleArchive(project.id)}>
                   封存
                 </button>
               </li>
@@ -173,41 +162,59 @@ export default function Projects() {
           </ul>
         </article>
 
-        <article className="rounded-lg border bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-lg font-semibold">專案詳情</h2>
+        <article className="rounded-lg border bg-white p-4 shadow-sm xl:col-span-2">
+          <h2 className="mb-3 text-lg font-semibold">Delivery Plan（里程碑 + Sprint）</h2>
           {selectedProject ? (
-            <div className="space-y-3 text-sm">
-              <p>
-                <strong>{selectedProject.name}</strong>
-              </p>
-              <p>{selectedProject.description}</p>
-              <p>Members: {selectedProject.members?.length ?? 0}</p>
-              <p>Milestones: {selectedProject.milestones?.length ?? 0}</p>
-              <p>Sprints: {selectedProject.sprints?.length ?? 0}</p>
+            <div className="space-y-4 text-sm">
+              <div className="rounded border border-slate-200 bg-slate-50 p-3">
+                <p className="font-semibold">
+                  {selectedProject.key} - {selectedProject.name}
+                </p>
+                <p className="text-gray-600">{selectedProject.description || "尚未填寫描述"}</p>
+              </div>
 
-              <form className="flex gap-2" onSubmit={handleCreateMilestone}>
-                <input
-                  className="flex-1 rounded border px-2 py-1"
-                  placeholder="新增 Milestone"
-                  value={milestoneName}
-                  onChange={(event) => setMilestoneName(event.target.value)}
-                />
-                <button className="rounded border px-3 py-1" type="submit">
-                  新增
-                </button>
-              </form>
 
-              <form className="flex gap-2" onSubmit={handleCreateSprint}>
-                <input
-                  className="flex-1 rounded border px-2 py-1"
-                  placeholder="新增 Sprint"
-                  value={sprintName}
-                  onChange={(event) => setSprintName(event.target.value)}
-                />
-                <button className="rounded border px-3 py-1" type="submit">
-                  新增
-                </button>
-              </form>
+              <div className="flex gap-2">
+                <Link to={`/projects/${selectedProject.id}`} className="rounded border px-3 py-1">專案詳情</Link>
+                <Link to={`/projects/${selectedProject.id}/issues`} className="rounded border px-3 py-1">Issue List</Link>
+                <Link to={`/projects/${selectedProject.id}/board`} className="rounded border px-3 py-1">Board</Link>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <form className="space-y-2 rounded border p-3" onSubmit={handleCreateMilestone}>
+                  <h3 className="font-semibold">Milestone（版本/交付節點）</h3>
+                  <input
+                    className="w-full rounded border px-2 py-1"
+                    placeholder="例如：MVP Beta"
+                    value={milestoneName}
+                    onChange={(event) => setMilestoneName(event.target.value)}
+                  />
+                  <button className="rounded border px-3 py-1" type="submit">
+                    新增 Milestone
+                  </button>
+                  <p className="text-xs text-gray-500">目前數量：{selectedProject.milestones?.length ?? 0}</p>
+                </form>
+
+                <form className="space-y-2 rounded border p-3" onSubmit={handleCreateSprint}>
+                  <h3 className="font-semibold">Sprint（迭代）</h3>
+                  <input
+                    className="w-full rounded border px-2 py-1"
+                    placeholder="例如：Sprint 1"
+                    value={sprintForm.name}
+                    onChange={(event) => setSprintForm((prev) => ({ ...prev, name: event.target.value }))}
+                  />
+                  <input
+                    className="w-full rounded border px-2 py-1"
+                    placeholder="Sprint Goal（可選）"
+                    value={sprintForm.goal}
+                    onChange={(event) => setSprintForm((prev) => ({ ...prev, goal: event.target.value }))}
+                  />
+                  <button className="rounded border px-3 py-1" type="submit">
+                    新增 Sprint
+                  </button>
+                  <p className="text-xs text-gray-500">目前數量：{selectedProject.sprints?.length ?? 0}</p>
+                </form>
+              </div>
             </div>
           ) : (
             <p className="text-sm text-gray-500">請選擇專案</p>
