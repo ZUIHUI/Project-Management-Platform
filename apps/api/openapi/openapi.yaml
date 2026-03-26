@@ -1,0 +1,417 @@
+openapi: 3.1.0
+info:
+  title: Project Management Platform API
+  version: 0.2.0
+  description: |
+    Refactor contract-first API baseline.
+    Due date semantic migration: `dueAt` is canonical; `dueDate` accepted for backward compatibility in write payloads and exposed only in legacy `/tasks`.
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      summary: Liveness health check
+      security: []
+      responses:
+        '200':
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkHealthResponse'
+  /openapi.yaml:
+    get:
+      summary: OpenAPI spec document
+      security: []
+      responses:
+        '200':
+          description: YAML file
+  /projects:
+    get:
+      summary: List projects
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - in: query
+          name: q
+          schema:
+            type: string
+        - in: query
+          name: status
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paged project list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      summary: Create project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /projects/{projectId}:
+    get:
+      summary: Get project detail
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Project detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Update project
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProjectRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /projects/{projectId}/issues:
+    get:
+      summary: List issues by project
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: statusId
+          schema: { type: string }
+        - in: query
+          name: assigneeId
+          schema: { type: string }
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+            enum: [number, updatedAt]
+        - in: query
+          name: order
+          schema:
+            type: string
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Paged issue list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueListResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      summary: Create issue
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateIssueRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /issues/{issueId}/status:
+    patch:
+      summary: Transition issue status
+      parameters:
+        - $ref: '#/components/parameters/IssueId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [statusId]
+              properties:
+                statusId:
+                  type: string
+      responses:
+        '200':
+          description: Updated issue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueResponse'
+        '422':
+          description: Unknown or invalid transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /tasks:
+    get:
+      deprecated: true
+      summary: Legacy task projection for compatibility
+      responses:
+        '200':
+          description: Legacy tasks with dueDate field
+          headers:
+            Deprecation:
+              schema: { type: string, enum: ['true'] }
+            Sunset:
+              schema: { type: string, example: '2026-12-31' }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LegacyTask'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    ProjectId:
+      in: path
+      name: projectId
+      required: true
+      schema: { type: string }
+    IssueId:
+      in: path
+      name: issueId
+      required: true
+      schema: { type: string }
+    Page:
+      in: query
+      name: page
+      schema: { type: integer, minimum: 1, default: 1 }
+    PageSize:
+      in: query
+      name: pageSize
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+  responses:
+    Unauthorized:
+      description: Missing/invalid token
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/AuthErrorResponse' }
+    Forbidden:
+      description: Role/scope forbidden
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Conflict:
+      description: Unique constraint conflict
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    ValidationError:
+      description: Validation failure
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+  schemas:
+    OkHealthResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            status: { type: string, example: ok }
+            uptime: { type: number }
+    AuthErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            message: { type: string }
+            status: { type: integer }
+    Project:
+      type: object
+      properties:
+        id: { type: string }
+        key: { type: string }
+        name: { type: string }
+        description: { type: string }
+        ownerId: { type: [string, 'null'] }
+        status: { type: string }
+        members:
+          type: array
+          items:
+            type: object
+            properties:
+              projectId: { type: string }
+              userId: { type: string }
+              role: { type: string }
+        milestones:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              name: { type: string }
+              dueAt: { type: [string, 'null'], format: date-time }
+        sprints:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              name: { type: string }
+    ProjectResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Project'
+    ProjectListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+        meta:
+          type: object
+          properties:
+            page: { type: integer }
+            pageSize: { type: integer }
+            total: { type: integer }
+            totalPages: { type: integer }
+    CreateProjectRequest:
+      type: object
+      required: [key, name]
+      properties:
+        key: { type: string, pattern: '^[A-Z][A-Z0-9_-]{1,11}$' }
+        name: { type: string }
+        description: { type: string }
+        ownerId: { type: string }
+    UpdateProjectRequest:
+      type: object
+      properties:
+        key: { type: string, pattern: '^[A-Z][A-Z0-9_-]{1,11}$' }
+        name: { type: string }
+        description: { type: string }
+        ownerId: { type: string }
+        status: { type: string }
+    Issue:
+      type: object
+      properties:
+        id: { type: string }
+        number: { type: integer }
+        projectId: { type: string }
+        title: { type: string }
+        description: { type: string }
+        priority: { type: string, enum: [low, medium, high] }
+        statusId: { type: string }
+        assigneeId: { type: [string, 'null'] }
+        reporterId: { type: [string, 'null'] }
+        dueAt: { type: [string, 'null'], format: date-time }
+    CreateIssueRequest:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string }
+        description: { type: string }
+        priority: { type: string, enum: [low, medium, high] }
+        assigneeId: { type: [string, 'null'] }
+        reporterId: { type: [string, 'null'] }
+        dueAt: { type: [string, 'null'], format: date-time }
+        dueDate:
+          description: Deprecated compatibility alias of dueAt
+          type: [string, 'null']
+          format: date-time
+    IssueResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Issue'
+    IssueListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Issue'
+        meta:
+          type: object
+          properties:
+            page: { type: integer }
+            pageSize: { type: integer }
+            total: { type: integer }
+            totalPages: { type: integer }
+    LegacyTask:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        projectId: { type: string }
+        status: { type: string }
+        priority: { type: string }
+        dueDate: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }

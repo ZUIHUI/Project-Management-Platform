@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { projectService } from "./project.service.js";
-import { requireRole } from "../shared/rbac.js";
+import { requireProjectScope, requireRole } from "../shared/rbac.js";
 import { fail, ok } from "../shared/http.js";
 
 const router = Router();
@@ -15,7 +15,7 @@ router.get("/projects", (req, res) => {
   });
 });
 
-router.get("/projects/:projectId", (req, res) => {
+router.get("/projects/:projectId", requireProjectScope({ mode: "read" }), (req, res) => {
   const project = projectService.get(req.params.projectId);
   if (!project) {
     return fail(res, 404, "Project not found");
@@ -38,7 +38,7 @@ router.post("/projects", requireRole("project_admin"), (req, res) => {
   return ok(res, result.project, 201);
 });
 
-router.put("/projects/:projectId", requireRole("project_admin"), (req, res) => {
+router.put("/projects/:projectId", requireRole("project_admin"), requireProjectScope({ mode: "admin" }), (req, res) => {
   const result = projectService.update(req.params.projectId, req.body);
   if (result.error) {
     return fail(res, result.status ?? 422, result.error);
@@ -47,7 +47,7 @@ router.put("/projects/:projectId", requireRole("project_admin"), (req, res) => {
   return ok(res, result.project);
 });
 
-router.post("/projects/:projectId/archive", requireRole("project_admin"), (req, res) => {
+router.post("/projects/:projectId/archive", requireRole("project_admin"), requireProjectScope({ mode: "admin" }), (req, res) => {
   const result = projectService.archive(req.params.projectId);
   if (result.error) {
     return fail(res, result.status ?? 422, result.error);
@@ -56,7 +56,7 @@ router.post("/projects/:projectId/archive", requireRole("project_admin"), (req, 
   return ok(res, result.project);
 });
 
-router.delete("/projects/:projectId", requireRole("project_admin"), (req, res) => {
+router.delete("/projects/:projectId", requireRole("project_admin"), requireProjectScope({ mode: "admin" }), (req, res) => {
   const result = projectService.remove(req.params.projectId);
   if (result.error) {
     return fail(res, result.status ?? 422, result.error);
@@ -65,7 +65,7 @@ router.delete("/projects/:projectId", requireRole("project_admin"), (req, res) =
   return ok(res, result.project);
 });
 
-router.post("/projects/:projectId/members", requireRole("project_admin"), (req, res) => {
+router.post("/projects/:projectId/members", requireRole("project_admin"), requireProjectScope({ mode: "admin" }), (req, res) => {
   const { userId, role } = req.body;
   if (!userId || !role) {
     return fail(res, 422, "userId and role are required");
@@ -79,7 +79,7 @@ router.post("/projects/:projectId/members", requireRole("project_admin"), (req, 
   return ok(res, result.member, 201);
 });
 
-router.post("/projects/:projectId/milestones", requireRole("member"), (req, res) => {
+router.post("/projects/:projectId/milestones", requireRole("member"), requireProjectScope({ mode: "write" }), (req, res) => {
   if (!req.body.name) {
     return fail(res, 422, "name is required");
   }
@@ -92,7 +92,7 @@ router.post("/projects/:projectId/milestones", requireRole("member"), (req, res)
   return ok(res, result.milestone, 201);
 });
 
-router.post("/projects/:projectId/sprints", requireRole("member"), (req, res) => {
+router.post("/projects/:projectId/sprints", requireRole("member"), requireProjectScope({ mode: "write" }), (req, res) => {
   if (!req.body.name) {
     return fail(res, 422, "name is required");
   }

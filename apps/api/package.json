@@ -9,7 +9,8 @@
     "pretest": "npm run prisma:setup",
     "test": "node scripts/smoke.mjs",
     "pretest:compat": "npm run prisma:setup",
-    "test:compat": "node scripts/verify-legacy-compat.mjs"
+    "test:compat": "node scripts/verify-legacy-compat.mjs",
+    "test:contract": "node scripts/contract.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.5.0",

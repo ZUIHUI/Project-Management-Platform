@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { fetchProjectById } from "../services/projects";
+import { projectService } from "../features/project";
 
 export default function ProjectDetail() {
   const { projectId } = useParams();
@@ -9,7 +9,7 @@ export default function ProjectDetail() {
   useEffect(() => {
     const load = async () => {
       if (!projectId) return;
-      const response = await fetchProjectById(projectId);
+      const response = await projectService.fetchProjectById(projectId);
       setProject(response.data?.data ?? null);
     };
     load();
