@@ -1,0 +1,177 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       String @id
+  name     String
+  email    String @unique
+  password String
+  role     String
+
+  // Relations
+  ownedProjects     Project[]         @relation("ProjectOwner")
+  projectMembers    ProjectMember[]
+  assignedIssues    Issue[]           @relation("IssueAssignee")
+  reportedIssues    Issue[]           @relation("IssueReporter")
+  authoredComments  Comment[]
+  notifications     Notification[]
+  activityLogs      ActivityLog[]
+}
+
+model Project {
+  id          String   @id
+  key         String   @unique
+  name        String
+  description String
+  ownerId     String
+  status      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  owner         User            @relation("ProjectOwner", fields: [ownerId], references: [id])
+  members       ProjectMember[]
+  milestones    Milestone[]
+  sprints       Sprint[]
+  issues        Issue[]
+}
+
+model ProjectMember {
+  projectId String
+  userId    String
+  role      String
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@id([projectId, userId])
+}
+
+model Milestone {
+  id        String   @id
+  projectId String
+  name      String
+  dueAt     DateTime?
+  status    String
+  createdAt DateTime @default(now())
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id])
+  issues  Issue[]
+}
+
+model Sprint {
+  id        String   @id
+  projectId String
+  name      String
+  goal      String
+  startAt   DateTime
+  endAt     DateTime?
+  status    String
+  createdAt DateTime @default(now())
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id])
+  issues  Issue[]
+}
+
+model Status {
+  id    String @id
+  name  String
+  order Int
+
+  // Relations
+  issues Issue[]
+
+  // Transitions
+  fromTransitions Transition[] @relation("FromStatus")
+  toTransitions   Transition[] @relation("ToStatus")
+}
+
+model Transition {
+  fromStatusId String
+  toStatusId   String
+
+  // Relations
+  fromStatus Status @relation("FromStatus", fields: [fromStatusId], references: [id])
+  toStatus   Status @relation("ToStatus", fields: [toStatusId], references: [id])
+
+  @@id([fromStatusId, toStatusId])
+}
+
+model Issue {
+  id          String   @id
+  projectId   String
+  number      Int
+  title       String
+  description String
+  priority    String
+  assigneeId  String?
+  reporterId  String?
+  statusId    String
+  dueDate     DateTime?
+  sprintId    String?
+  milestoneId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  project   Project    @relation(fields: [projectId], references: [id])
+  assignee  User?      @relation("IssueAssignee", fields: [assigneeId], references: [id])
+  reporter  User?      @relation("IssueReporter", fields: [reporterId], references: [id])
+  status    Status     @relation(fields: [statusId], references: [id])
+  sprint    Sprint?    @relation(fields: [sprintId], references: [id])
+  milestone Milestone? @relation(fields: [milestoneId], references: [id])
+  comments  Comment[]
+  activityLogs ActivityLog[]
+}
+
+model Comment {
+  id       String   @id
+  issueId  String
+  authorId String?
+  body     String
+  createdAt DateTime @default(now())
+
+  // Relations
+  issue  Issue @relation(fields: [issueId], references: [id])
+  author User? @relation(fields: [authorId], references: [id])
+}
+
+model Notification {
+  id        String   @id
+  userId    String
+  type      String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+}
+
+model ActivityLog {
+  id      String   @id
+  actorId String?
+  issueId String
+  action  String
+  before  String?
+  after   String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  actor User? @relation(fields: [actorId], references: [id])
+  issue Issue @relation(fields: [issueId], references: [id])
+}

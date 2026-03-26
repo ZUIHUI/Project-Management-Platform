@@ -4,9 +4,9 @@ const now = () => new Date().toISOString();
 
 export const db = {
   users: [
-    { id: "user-owner", name: "Owner", role: "owner" },
-    { id: "user-pm", name: "PM", role: "project_admin" },
-    { id: "user-dev", name: "Developer", role: "member" },
+    { id: "user-owner", name: "Owner", email: "owner@example.com", role: "owner", password: "$2b$10$TToBgUlW0lz70sAAZBxyF.cnDQZLSwITS0nkMihoHF3z8s4GbH2dq" }, // password: "password"
+    { id: "user-pm", name: "PM", email: "pm@example.com", role: "project_admin", password: "$2b$10$TToBgUlW0lz70sAAZBxyF.cnDQZLSwITS0nkMihoHF3z8s4GbH2dq" },
+    { id: "user-dev", name: "Developer", email: "dev@example.com", role: "member", password: "$2b$10$TToBgUlW0lz70sAAZBxyF.cnDQZLSwITS0nkMihoHF3z8s4GbH2dq" },
   ],
   projects: [
     {

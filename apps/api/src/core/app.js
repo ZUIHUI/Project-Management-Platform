@@ -6,6 +6,8 @@ import projectRoutes from "../domain/project/project.routes.js";
 import issueRoutes from "../domain/issue/issue.routes.js";
 import dashboardRoutes from "../domain/dashboard/dashboard.routes.js";
 import notificationRoutes from "../domain/notification/notification.routes.js";
+import { authRouter } from "../domain/auth/auth.routes.js";
+import { requireAuth } from "../domain/shared/rbac.js";
 
 export const createApp = () => {
   const app = express();
@@ -19,11 +21,13 @@ export const createApp = () => {
     });
   });
 
+  app.use(API_PREFIX, authRouter);
+
   app.use(API_PREFIX, healthRoutes);
-  app.use(API_PREFIX, projectRoutes);
-  app.use(API_PREFIX, issueRoutes);
-  app.use(API_PREFIX, dashboardRoutes);
-  app.use(API_PREFIX, notificationRoutes);
+  app.use(API_PREFIX, requireAuth, projectRoutes);
+  app.use(API_PREFIX, requireAuth, issueRoutes);
+  app.use(API_PREFIX, requireAuth, dashboardRoutes);
+  app.use(API_PREFIX, requireAuth, notificationRoutes);
 
   app.use((req, res) => {
     res.status(404).json({ error: "Route not found" });

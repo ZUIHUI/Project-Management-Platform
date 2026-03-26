@@ -12,7 +12,7 @@ export const roleAtLeast = (role, minimum) => {
 
 export const requireRole = (minimumRole) => {
   return (req, res, next) => {
-    const role = req.headers["x-role"] ?? "viewer";
+    const role = req.currentRole || req.headers["x-role"] || "viewer";
     if (!roleAtLeast(role, minimumRole)) {
       res.status(403).json({ error: "Forbidden", requiredRole: minimumRole });
       return;
@@ -21,4 +21,14 @@ export const requireRole = (minimumRole) => {
     req.currentRole = role;
     next();
   };
+};
+
+export const requireAuthOrHeaderRole = (req, res, next) => {
+  const role = req.currentRole || req.headers["x-role"] || "viewer";
+  if (!role || role === "viewer") {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  req.currentRole = role;
+  next();
 };

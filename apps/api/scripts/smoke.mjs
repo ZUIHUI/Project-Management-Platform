@@ -27,35 +27,48 @@ const run = async () => {
   try {
     await waitForServer();
 
-    const projectsRes = await fetch(`${baseUrl}/projects`);
+    // Verify auth endpoint
+    const loginRes = await fetch(`${baseUrl}/login`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: "pm@example.com", password: "password" }),
+    });
+    assert.equal(loginRes.status, 200);
+    const loginBody = await loginRes.json();
+    const token = loginBody.accessToken || loginBody.data?.accessToken;
+    assert.ok(token, "access token is required");
+
+    const authHeader = { Authorization: `Bearer ${token}` };
+
+    const projectsRes = await fetch(`${baseUrl}/projects`, { headers: authHeader });
     assert.equal(projectsRes.status, 200);
     const projectsBody = await projectsRes.json();
     const projectId = projectsBody.data[0].id;
 
     const createProjectRes = await fetch(`${baseUrl}/projects`, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-role": "project_admin" },
+      headers: { ...authHeader, "content-type": "application/json" },
       body: JSON.stringify({ key: "PLN", name: "Planning" }),
     });
     assert.equal(createProjectRes.status, 201);
 
     const milestoneRes = await fetch(`${baseUrl}/projects/${projectId}/milestones`, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-role": "member" },
+      headers: { ...authHeader, "content-type": "application/json" },
       body: JSON.stringify({ name: "Smoke milestone" }),
     });
     assert.equal(milestoneRes.status, 201);
 
     const sprintRes = await fetch(`${baseUrl}/projects/${projectId}/sprints`, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-role": "member" },
+      headers: { ...authHeader, "content-type": "application/json" },
       body: JSON.stringify({ name: "Smoke sprint" }),
     });
     assert.equal(sprintRes.status, 201);
 
     const createIssueRes = await fetch(`${baseUrl}/projects/${projectId}/issues`, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-role": "member" },
+      headers: { ...authHeader, "content-type": "application/json" },
       body: JSON.stringify({ title: "Smoke test issue", reporterId: "user-pm" }),
     });
     assert.equal(createIssueRes.status, 201);
@@ -64,36 +77,36 @@ const run = async () => {
 
     const assignRes = await fetch(`${baseUrl}/issues/${issueId}/assignee`, {
       method: "PATCH",
-      headers: { "content-type": "application/json", "x-role": "member" },
+      headers: { ...authHeader, "content-type": "application/json" },
       body: JSON.stringify({ assigneeId: "user-dev" }),
     });
     assert.equal(assignRes.status, 200);
 
     const statusTransitionRes = await fetch(`${baseUrl}/issues/${issueId}/status`, {
       method: "PATCH",
-      headers: { "content-type": "application/json", "x-role": "member" },
+      headers: { ...authHeader, "content-type": "application/json" },
       body: JSON.stringify({ statusId: "doing" }),
     });
     assert.equal(statusTransitionRes.status, 200);
 
     const commentRes = await fetch(`${baseUrl}/issues/${issueId}/comments`, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-role": "member" },
+      headers: { ...authHeader, "content-type": "application/json" },
       body: JSON.stringify({ body: "Looks good", authorId: "user-dev" }),
     });
     assert.equal(commentRes.status, 201);
 
-    const boardRes = await fetch(`${baseUrl}/projects/${projectId}/board`);
+    const boardRes = await fetch(`${baseUrl}/projects/${projectId}/board`, { headers: authHeader });
     assert.equal(boardRes.status, 200);
 
-    const dashboardRes = await fetch(`${baseUrl}/dashboard`);
+    const dashboardRes = await fetch(`${baseUrl}/dashboard`, { headers: authHeader });
     assert.equal(dashboardRes.status, 200);
 
-    const legacyRes = await fetch(`${baseUrl}/tasks`);
+    const legacyRes = await fetch(`${baseUrl}/tasks`, { headers: authHeader });
     assert.equal(legacyRes.status, 200);
     assert.equal(legacyRes.headers.get("deprecation"), "true");
 
-    const notificationsRes = await fetch(`${baseUrl}/notifications`);
+    const notificationsRes = await fetch(`${baseUrl}/notifications`, { headers: authHeader });
     assert.equal(notificationsRes.status, 200);
     const notificationsBody = await notificationsRes.json();
     const firstNotification = notificationsBody.data[0];
@@ -101,12 +114,13 @@ const run = async () => {
     if (firstNotification) {
       const markReadRes = await fetch(`${baseUrl}/notifications/${firstNotification.id}/read`, {
         method: "PATCH",
+        headers: authHeader,
       });
       assert.equal(markReadRes.status, 200);
     }
 
     const activityRes = await fetch(`${baseUrl}/activity-logs`, {
-      headers: { "x-role": "member" },
+      headers: authHeader,
     });
     assert.equal(activityRes.status, 200);
 
