@@ -3,8 +3,12 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "prisma:setup": "DATABASE_URL=${DATABASE_URL:-file:./dev.db} prisma generate && DATABASE_URL=${DATABASE_URL:-file:./dev.db} prisma db push",
+    "predev": "npm run prisma:setup",
     "dev": "node src/index.js",
+    "pretest": "npm run prisma:setup",
     "test": "node scripts/smoke.mjs",
+    "pretest:compat": "npm run prisma:setup",
     "test:compat": "node scripts/verify-legacy-compat.mjs"
   },
   "dependencies": {
