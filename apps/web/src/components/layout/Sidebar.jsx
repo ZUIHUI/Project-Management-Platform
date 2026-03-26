@@ -3,9 +3,11 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { icons } from "../icons";
 
 const navItems = [
-  { name: "資訊儀錶板", path: "/", icon: "dashboard" },
-  { name: "專案設定", path: "/projects", icon: "project" },
-  { name: "專案任務", path: "/tasks", icon: "task" },
+  { name: "Home", path: "/home", icon: "dashboard" },
+  { name: "Projects", path: "/projects", icon: "project" },
+  { name: "Dashboard", path: "/dashboard", icon: "dashboard" },
+  { name: "Notifications", path: "/notifications", icon: "task" },
+  { name: "Settings", path: "/settings", icon: "project" },
 ];
 
 const ProjectIcon = icons.sidebartitle;
@@ -33,7 +35,7 @@ export default function Sidebar({ onLogout }) {
                 <ProjectIcon size={20} className="text-blue-700" />
               </span>
             )}
-            <span className="text-2xl font-bold tracking-wide">專案管理</span>
+            <span className="text-2xl font-bold tracking-wide">Workspace</span>
           </div>
         ) : null}
         <button
