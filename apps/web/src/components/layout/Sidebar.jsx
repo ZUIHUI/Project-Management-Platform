@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { icons } from "../icons";
 
 const navItems = [
@@ -12,15 +12,9 @@ const navItems = [
 
 const ProjectIcon = icons.sidebartitle;
 
-export default function Sidebar({ onLogout }) {
+export default function Sidebar() {
   const location = useLocation();
-  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
-
-  const handleLogout = () => {
-    onLogout?.();
-    navigate("/login");
-  };
 
   return (
     <aside
