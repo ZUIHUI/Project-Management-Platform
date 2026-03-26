@@ -7,6 +7,14 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 
 export default function App() {
+  const handleAuthSuccess = () => {
+    localStorage.setItem(STORAGE_KEY, "true");
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem(STORAGE_KEY);
+  };
+
   return (
     <HashRouter>
       <Routes>

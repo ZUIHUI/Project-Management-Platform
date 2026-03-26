@@ -2,7 +2,7 @@ import Sidebar from "./Sidebar";
 import { Outlet } from "react-router-dom";
 import Onboarding from "../Onboarding";
 
-export default function MainLayout() {
+export default function MainLayout({ onLogout }) {
   return (
     <div className="flex min-h-screen w-full bg-slate-50 text-slate-900">
       <Sidebar />
