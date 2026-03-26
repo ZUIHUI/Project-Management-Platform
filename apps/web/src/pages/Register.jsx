@@ -1,30 +1,23 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 
-export default function Register({ onRegisterSuccess }) {
+export default function Register() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: "", email: "", password: "" });
-  const [error, setError] = useState("");
 
   const handleSubmit = (event) => {
     event.preventDefault();
     if (!form.name.trim() || !form.email.trim() || !form.password.trim()) {
-      setError("請完整填寫註冊資訊");
       return;
     }
-
-    onRegisterSuccess?.({
-      name: form.name.trim(),
-      email: form.email.trim(),
-    });
-    navigate("/");
+    navigate("/login");
   };
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white/95 p-8 shadow-xl backdrop-blur">
         <h1 className="text-2xl font-bold text-slate-900">建立帳號</h1>
-        <p className="mt-2 text-sm text-slate-600">註冊成功後會直接進入專案管理首頁。</p>
+        <p className="mt-2 text-sm text-slate-600">快速註冊後即可開始建立專案與任務。</p>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <label className="block text-sm font-medium text-slate-700">
@@ -59,8 +52,6 @@ export default function Register({ onRegisterSuccess }) {
               onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
             />
           </label>
-
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
           <button
             type="submit"
