@@ -1,5 +1,4 @@
-import { Router } from "express";
-import { store } from "../../data/store.js";
+import dashboardRoutes from "../../domain/dashboard/dashboard.routes.js";
 
 const router = Router();
 

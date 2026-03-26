@@ -1,6 +1,4 @@
-import { Router } from "express";
-import { randomUUID } from "node:crypto";
-import { store } from "../../data/store.js";
+import notificationRoutes from "../../domain/notification/notification.routes.js";
 
 const router = Router();
 

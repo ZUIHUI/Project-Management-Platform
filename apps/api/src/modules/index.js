@@ -1,4 +1,3 @@
-import authRoutes from "./auth/auth.routes.js";
 import dashboardRoutes from "./dashboard/dashboard.routes.js";
 import filesRoutes from "./files/files.routes.js";
 import healthRoutes from "./health/health.routes.js";
