@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { fetchProjects } from "../services/projects";
 import { fetchIssuesByProject, createIssue, transitionIssueStatus } from "../services/task";
@@ -56,8 +56,8 @@ export default function Tasks({ viewMode = "list" }) {
       const response = await fetchIssuesByProject(selectedProjectId);
       const list = response.data?.data ?? [];
       setIssues(list);
-      if (list.length > 0 && !selectedIssueId) {
-        setSelectedIssueId(list[0].id);
+      if (list.length > 0) {
+        setSelectedIssueId((currentId) => currentId || list[0].id);
       }
     } catch {
       setError("無法載入 Issue 清單");
@@ -67,13 +67,6 @@ export default function Tasks({ viewMode = "list" }) {
   useEffect(() => {
     loadIssues(projectId);
   }, [projectId, loadIssues]);
-
-  const selectedProject = useMemo(() => projects.find((project) => project.id === projectId), [projects, projectId]);
-
-  const filteredIssues = useMemo(
-    () => issues.filter((issue) => issue.title.toLowerCase().includes(keyword.toLowerCase())),
-    [issues, keyword],
-  );
 
   const selectedProject = useMemo(() => projects.find((project) => project.id === projectId), [projects, projectId]);
 

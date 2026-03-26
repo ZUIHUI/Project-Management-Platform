@@ -4,16 +4,12 @@ import Projects from "./pages/Projects";
 import MainLayout from "./components/layout/MainLayout";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ProjectDetail from "./pages/ProjectDetail";
+import Tasks from "./pages/Tasks";
+import Notifications from "./pages/Notifications";
+import Settings from "./pages/Settings";
 
 export default function App() {
-  const handleAuthSuccess = () => {
-    localStorage.setItem(STORAGE_KEY, "true");
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem(STORAGE_KEY);
-  };
-
   return (
     <HashRouter>
       <Routes>
