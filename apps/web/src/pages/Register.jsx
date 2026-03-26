@@ -1,16 +1,29 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { authService } from "../features/auth/authService";
 
 export default function Register() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     if (!form.name.trim() || !form.email.trim() || !form.password.trim()) {
       return;
     }
-    navigate("/login");
+
+    try {
+      setSubmitting(true);
+      setError("");
+      await authService.register(form.name.trim(), form.email.trim(), form.password);
+      navigate("/home");
+    } catch (registerError) {
+      setError(registerError?.response?.data?.error?.message ?? "註冊失敗，請稍後再試");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -55,10 +68,12 @@ export default function Register() {
 
           <button
             type="submit"
+            disabled={submitting}
             className="w-full rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white transition hover:bg-blue-700"
           >
-            註冊帳號
+            {submitting ? "建立中..." : "註冊帳號"}
           </button>
+          {error ? <p className="text-sm text-red-600">{error}</p> : null}
         </form>
 
         <p className="mt-5 text-sm text-slate-600">

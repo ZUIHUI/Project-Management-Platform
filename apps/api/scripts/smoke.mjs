@@ -99,6 +99,9 @@ const run = async () => {
     const boardRes = await fetch(`${baseUrl}/projects/${projectId}/board`, { headers: authHeader });
     assert.equal(boardRes.status, 200);
 
+    const timelineRes = await fetch(`${baseUrl}/projects/${projectId}/timeline`, { headers: authHeader });
+    assert.equal(timelineRes.status, 200);
+
     const dashboardRes = await fetch(`${baseUrl}/dashboard`, { headers: authHeader });
     assert.equal(dashboardRes.status, 200);
 

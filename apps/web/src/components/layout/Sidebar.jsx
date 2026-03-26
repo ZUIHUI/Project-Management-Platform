@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { icons } from "../icons";
+import { authService } from "../../features/auth/authService";
 
 const navItems = [
   { name: "Home", path: "/home", icon: "dashboard" },
@@ -14,7 +15,13 @@ const ProjectIcon = icons.sidebartitle;
 
 export default function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+
+  const handleLogout = () => {
+    authService.logout();
+    navigate("/login");
+  };
 
   return (
     <aside
@@ -68,12 +75,13 @@ export default function Sidebar() {
 
       {!collapsed ? (
         <div className="space-y-2 border-t border-blue-500/40 pt-4">
-          <Link
-            to="/login"
-            className="block rounded-lg border border-blue-300/30 px-3 py-2 text-sm text-blue-100 transition hover:bg-blue-700"
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="block w-full rounded-lg border border-blue-300/30 px-3 py-2 text-left text-sm text-blue-100 transition hover:bg-blue-700"
           >
-            切換登入帳號
-          </Link>
+            登出
+          </button>
           <Link
             to="/register"
             className="block rounded-lg bg-white px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"

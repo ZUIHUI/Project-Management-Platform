@@ -4,12 +4,14 @@
   "type": "module",
   "scripts": {
     "prisma:setup": "DATABASE_URL=${DATABASE_URL:-file:./dev.db} prisma generate && DATABASE_URL=${DATABASE_URL:-file:./dev.db} prisma db push",
-    "predev": "npm run prisma:setup",
+    "db:seed": "ts-node seed.ts",
+    "predev": "npm run prisma:setup && npm run db:seed",
     "dev": "node src/index.js",
-    "pretest": "npm run prisma:setup",
+    "pretest": "npm run prisma:setup && npm run db:seed",
     "test": "node scripts/smoke.mjs",
-    "pretest:compat": "npm run prisma:setup",
+    "pretest:compat": "npm run prisma:setup && npm run db:seed",
     "test:compat": "node scripts/verify-legacy-compat.mjs",
+    "pretest:contract": "npm run prisma:setup && npm run db:seed",
     "test:contract": "node scripts/contract.mjs"
   },
   "dependencies": {

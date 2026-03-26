@@ -24,6 +24,17 @@ router.get("/projects/:projectId", requireProjectScope({ mode: "read" }), (req, 
   return ok(res, project);
 });
 
+router.get("/projects/:projectId/timeline", requireProjectScope({ mode: "read" }), (req, res) => {
+  const result = projectService.timeline(req.params.projectId);
+  if (result.error) {
+    return fail(res, result.status ?? 404, result.error);
+  }
+
+  return ok(res, result.timeline, 200, {
+    lastSync: result.timeline.lastSync,
+  });
+});
+
 router.post("/projects", requireRole("project_admin"), (req, res) => {
   const { key, name } = req.body;
   if (!key || !name) {

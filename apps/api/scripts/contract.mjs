@@ -68,6 +68,13 @@ const run = async () => {
     assert.equal(Array.isArray(listBody.data), true);
     assert.equal(typeof listBody.meta.page, "number");
 
+    const timelineRes = await fetch(`${baseUrl}/projects/proj-1/timeline`, { headers: auth });
+    assert.equal(timelineRes.status, 200);
+    const timelineBody = await timelineRes.json();
+    assert.equal(timelineBody.data.project.id, "proj-1");
+    assert.equal(Array.isArray(timelineBody.data.items), true);
+    assert.equal(typeof timelineBody.meta.lastSync, "string");
+
     const badTransitionRes = await fetch(`${baseUrl}/issues/${issueId}/status`, {
       method: "PATCH",
       headers: { ...auth, "content-type": "application/json" },
