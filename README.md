@@ -21,6 +21,12 @@ This repository now follows a monorepo structure with separate frontend and back
 ### Build
 Use `npm run build:web` to create a production build of the frontend.
 
+### GitHub Pages Demo
+The web app can be deployed to GitHub Pages via `.github/workflows/deploy-github-pages.yml`.
+- Expected URL format: `https://<github-username>.github.io/Project-Management-Platform/`
+- Production build runs in demo mode (`VITE_DEMO_MODE=true`) so the site works without backend hosting.
+
+
 ---
 
 ## 中文

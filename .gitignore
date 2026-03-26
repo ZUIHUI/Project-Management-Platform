@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local Yarn artifacts
+.yarn/
+.yarnrc.yml
+apps/web/.yarn/
+apps/web/.yarnrc.yml
