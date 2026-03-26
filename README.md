@@ -26,6 +26,16 @@ The web app can be deployed to GitHub Pages via `.github/workflows/deploy-github
 - Expected URL format: `https://<github-username>.github.io/Project-Management-Platform/`
 - Production build runs in demo mode (`VITE_DEMO_MODE=true`) so the site works without backend hosting.
 
+### API Documentation
+- Backend API docs: `apps/api/API.md`
+
+### Quick API usage
+1. Start backend: `cd apps/api && npm run dev`
+2. Register: `curl -X POST http://localhost:3000/api/v1/register -H 'Content-Type: application/json' -d '{"name":"Owner","email":"owner@example.com","password":"password"}'`
+3. Login: `curl -X POST http://localhost:3000/api/v1/login -H 'Content-Type: application/json' -d '{"email":"owner@example.com","password":"password"}'`
+4. Use returned `accessToken` for protected endpoints:
+   - `GET http://localhost:3000/api/v1/projects` with header `Authorization: Bearer <token>`
+
 
 ---
 
