@@ -1,4 +1,5 @@
 import { STATUS } from "../config/constants.js";
+import { randomUUID } from "crypto";
 
 const now = () => new Date().toISOString();
 
@@ -62,7 +63,4 @@ export const db = {
   activityLogs: [],
 };
 
-export const idFactory = (() => {
-  let sequence = 1;
-  return (prefix) => `${prefix}-${sequence++}`;
-})();
+export const idFactory = (prefix) => `${prefix}-${randomUUID()}`;

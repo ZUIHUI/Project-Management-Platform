@@ -12,6 +12,7 @@ authRouter.post('/register', async (req, res) => {
     }
     res.status(201).json(result);
   } catch (error) {
+    console.error('Register error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -25,6 +26,7 @@ authRouter.post('/login', async (req, res) => {
     }
     res.json(result);
   } catch (error) {
+    console.error('Login error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -38,6 +40,7 @@ authRouter.post('/refresh', async (req, res) => {
     }
     res.json(result);
   } catch (error) {
+    console.error('Refresh error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
