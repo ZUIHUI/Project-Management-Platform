@@ -46,7 +46,7 @@ export default function Tasks({ viewMode = "list" }) {
     loadProjects();
   }, [routeProjectId]);
 
-  const loadIssues = async (selectedProjectId) => {
+  const loadIssues = useCallback(async (selectedProjectId) => {
     if (!selectedProjectId) {
       setIssues([]);
       return;
@@ -62,11 +62,18 @@ export default function Tasks({ viewMode = "list" }) {
     } catch {
       setError("無法載入 Issue 清單");
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadIssues(projectId);
-  }, [projectId]);
+  }, [projectId, loadIssues]);
+
+  const selectedProject = useMemo(() => projects.find((project) => project.id === projectId), [projects, projectId]);
+
+  const filteredIssues = useMemo(
+    () => issues.filter((issue) => issue.title.toLowerCase().includes(keyword.toLowerCase())),
+    [issues, keyword],
+  );
 
   const selectedProject = useMemo(() => projects.find((project) => project.id === projectId), [projects, projectId]);
 
