@@ -49,3 +49,16 @@ The web app can be deployed to GitHub Pages via `.github/workflows/deploy-github
 
 ### 建置
 若需產生前端正式版本，可執行 `npm run build:web`。
+
+
+### 如何開啟此專案（本機）
+1. 安裝 Node.js 18+。
+2. 在專案根目錄執行 `npm ci` 安裝所有 workspace 依賴。
+3. 啟動後端 API：`npm run dev:api`（預設 `http://localhost:3000/api/v1/health`）。
+4. 另開一個終端啟動前端：`npm run dev:web`。
+5. 於瀏覽器開啟 Vite 顯示網址（通常是 `http://localhost:5173`）。
+
+### 快速檢查
+- API smoke test：`npm --workspace apps/api test`
+- 前端建置：`npm --workspace apps/web run build`
+
