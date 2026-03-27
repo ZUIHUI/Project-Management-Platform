@@ -34,6 +34,7 @@ const db = {
 let seq = 1;
 const nextId = (prefix: string) => `${prefix}-${seq++}`;
 const fakeToken = (prefix: string, userId: string) => `${prefix}-${userId}-${Date.now()}`;
+const validPassword = (password: string) => password.length >= 8 && /[a-z]/.test(password) && /[A-Z]/.test(password) && /[0-9]/.test(password);
 
 const body = (config: AxiosRequestConfig) => {
   if (!config.data) return {};
@@ -61,6 +62,10 @@ export const mockAdapter = async (config: AxiosRequestConfig): Promise<AxiosResp
 
     if (!email || !password || !name) {
       return ok({ error: { message: "name, email and password are required", status: 422 } }, 422);
+    }
+
+    if (name.length < 2 || !validPassword(password)) {
+      return ok({ error: { message: "密碼需為 8-64 字元，且至少包含 1 個大寫英文字母、1 個小寫英文字母、1 個數字", status: 422 } }, 422);
     }
 
     const existing = db.users.find((user) => user.email === email);
@@ -103,6 +108,29 @@ export const mockAdapter = async (config: AxiosRequestConfig): Promise<AxiosResp
       user: { id: user.id, name: user.name, role: user.role },
     });
   }
+  if (method === "get" && url === "/me") {
+    const user = db.users[0];
+    return ok({ user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+  }
+
+  if (method === "post" && url === "/change-password") {
+    const payload = body(config);
+    const currentPassword = String(payload.currentPassword ?? "");
+    const newPassword = String(payload.newPassword ?? "");
+    const user = db.users[0];
+
+    if (user.password !== currentPassword) {
+      return ok({ error: { message: "Current password is incorrect", status: 401 } }, 401);
+    }
+
+    if (!validPassword(newPassword)) {
+      return ok({ error: { message: "密碼需為 8-64 字元，且至少包含 1 個大寫英文字母、1 個小寫英文字母、1 個數字", status: 422 } }, 422);
+    }
+
+    user.password = newPassword;
+    return ok({ message: "Password updated" });
+  }
+
 
   if (method === "get" && url === "/projects") {
     return ok(db.projects);
@@ -189,6 +217,32 @@ export const mockAdapter = async (config: AxiosRequestConfig): Promise<AxiosResp
     issue.statusId = String(payload.statusId ?? issue.statusId);
     issue.updatedAt = now();
     return ok(issue);
+  }
+
+  if (method === "get" && url === "/notifications") {
+    return ok(db.notifications);
+  }
+
+  if (method === "post" && url === "/notifications") {
+    const payload = body(config);
+    const item = {
+      id: nextId("noti"),
+      userId: String(payload.userId ?? db.users[0].id),
+      type: String(payload.type ?? "system"),
+      message: String(payload.message ?? ""),
+      read: false,
+      createdAt: now(),
+    };
+    db.notifications.unshift(item);
+    return ok(item, 201);
+  }
+
+  const markReadMatch = url.match(/^\/notifications\/([^/]+)\/read$/);
+  if (method === "patch" && markReadMatch) {
+    const item = db.notifications.find((entry) => entry.id === markReadMatch[1]);
+    if (!item) return ok(null, 404);
+    item.read = true;
+    return ok(item);
   }
 
   if (method === "get" && url === "/dashboard") {

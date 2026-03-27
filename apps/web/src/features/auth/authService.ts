@@ -56,6 +56,17 @@ export const authService = {
     return payload;
   },
 
+
+  async getProfile() {
+    const response = await axiosInstance.get("/me");
+    return response.data;
+  },
+
+  async changePassword(currentPassword: string, newPassword: string) {
+    const response = await axiosInstance.post("/change-password", { currentPassword, newPassword });
+    return response.data;
+  },
+
   logout() {
     safeStorage.remove(ACCESS_TOKEN_KEY);
     safeStorage.remove(REFRESH_TOKEN_KEY);

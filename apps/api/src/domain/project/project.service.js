@@ -1,4 +1,4 @@
-import { db, idFactory } from "../../data/inMemoryDB.js";
+import { db, idFactory, persistDb } from "../../data/inMemoryDB.js";
 
 const PROJECT_KEY_PATTERN = /^[A-Z][A-Z0-9_-]{1,11}$/;
 
@@ -146,6 +146,7 @@ export const projectService = {
     };
 
     db.projects.push(project);
+    persistDb();
     return { project: this.get(project.id) };
   },
 
@@ -175,6 +176,7 @@ export const projectService = {
     project.ownerId = payload.ownerId ?? project.ownerId;
     project.status = payload.status ?? project.status;
     project.updatedAt = new Date().toISOString();
+    persistDb();
 
     return { project: this.get(projectId) };
   },
@@ -189,6 +191,7 @@ export const projectService = {
     db.projectMembers = db.projectMembers.filter((item) => item.projectId !== projectId);
     db.milestones = db.milestones.filter((item) => item.projectId !== projectId);
     db.sprints = db.sprints.filter((item) => item.projectId !== projectId);
+    persistDb();
 
     return { project };
   },
@@ -229,11 +232,13 @@ export const projectService = {
 
     if (existing) {
       existing.role = role;
+      persistDb();
       return { member: existing };
     }
 
     const member = { projectId, userId, role };
     db.projectMembers.push(member);
+    persistDb();
     return { member };
   },
 
@@ -252,6 +257,7 @@ export const projectService = {
     };
 
     db.milestones.push(milestone);
+    persistDb();
     return { milestone };
   },
 
@@ -276,6 +282,7 @@ export const projectService = {
     };
 
     db.sprints.push(sprint);
+    persistDb();
     return { sprint };
   },
 };

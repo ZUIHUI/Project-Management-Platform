@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { authService } from "../features/auth/authService";
+import { validateLoginInput } from "../features/auth/credentialValidation";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -10,7 +11,9 @@ export default function Login() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!form.email.trim() || !form.password.trim()) {
+    const validationError = validateLoginInput(form.email, form.password);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
