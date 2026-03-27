@@ -7,6 +7,12 @@ const navItems = [
   { name: "Home", path: "/home", icon: "dashboard", minRole: "viewer" },
   { name: "Projects", path: "/projects", icon: "project", minRole: "viewer" },
   { name: "Dashboard", path: "/dashboard", icon: "dashboard", minRole: "member" },
+  { name: "Board", path: "/board", icon: "task", minRole: "member" },
+  { name: "Timeline", path: "/timeline", icon: "task", minRole: "member" },
+  { name: "Calendar", path: "/calendar", icon: "task", minRole: "member" },
+  { name: "Insights", path: "/insights", icon: "dashboard", minRole: "member" },
+  { name: "Team", path: "/team", icon: "project", minRole: "member" },
+  { name: "Activity Log", path: "/activity", icon: "task", minRole: "member" },
   { name: "Notifications", path: "/notifications", icon: "task", minRole: "member" },
   { name: "Settings", path: "/settings", icon: "project", minRole: "viewer" },
 ];
