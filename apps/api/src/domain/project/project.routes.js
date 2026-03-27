@@ -41,7 +41,7 @@ router.post("/projects", requireRole("project_admin"), async (req, res) => {
     return fail(res, 422, "key and name are required");
   }
 
-  const result = await projectService.create(req.body);
+  const result = await projectService.create(req.body, req.currentUser?.id ?? null);
   if (result.error) {
     return fail(res, result.status ?? 422, result.error);
   }

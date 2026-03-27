@@ -55,7 +55,7 @@ export const authService = {
   },
 
   async register(name: string, email: string, password: string) {
-    const response = await axiosInstance.post("/register", { name, email, password, role: "member" });
+    const response = await axiosInstance.post("/register", { name, email, password, role: "project_admin" });
     const payload = unwrapAuthPayload(response);
     if (!payload) {
       throw new Error("註冊回應格式錯誤");
