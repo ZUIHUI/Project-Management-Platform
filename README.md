@@ -27,7 +27,7 @@ The web app can be deployed to GitHub Pages via `.github/workflows/deploy-github
 - Production build runs in demo mode (`VITE_DEMO_MODE=true`) so the site works without backend hosting.
 
 ### API Documentation
-- Backend API docs: `apps/api/API.md`
+- Backend API docs (包含資料庫架構與完整路由清單): `apps/api/API.md`
 
 ### Quick API usage
 1. Start backend: `cd apps/api && npm run dev`
