@@ -70,7 +70,7 @@ export const projectService = {
     return { timeline: { project: { id: project.id, key: project.key, name: project.name, status: project.status }, items, lastSync: new Date().toISOString() } };
   },
 
-  async create(payload) {
+  async create(payload, actorUserId = null) {
     if (!payload.key || !PROJECT_KEY_PATTERN.test(payload.key)) {
       return { error: 'project key must be 2-12 chars, uppercase letters/numbers/_/- and start with a letter', status: 422 };
     }
@@ -78,15 +78,23 @@ export const projectService = {
     const existing = await db.project.findUnique({ where: { key: payload.key } });
     if (existing) return { error: 'Project key already exists', status: 409 };
 
+    const ownerId = actorUserId ?? payload.ownerId ?? 'user-pm';
+
     const project = await db.project.create({
       data: {
         id: idFactory('proj'),
         key: payload.key,
         name: payload.name,
         description: payload.description ?? '',
-        ownerId: payload.ownerId ?? 'user-pm',
+        ownerId,
         status: payload.status ?? 'active',
       },
+    });
+
+    await db.projectMember.upsert({
+      where: { projectId_userId: { projectId: project.id, userId: ownerId } },
+      update: { role: 'project_admin' },
+      create: { projectId: project.id, userId: ownerId, role: 'project_admin' },
     });
 
     return { project: await withProjectMeta(project) };

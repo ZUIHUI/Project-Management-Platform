@@ -45,7 +45,7 @@ export default function Projects() {
     }
 
     try {
-      await projectService.createProject({ ...newProject, ownerId: "user-pm" });
+      await projectService.createProject(newProject);
       setNewProject({ key: "", name: "", description: "" });
       await loadProjects();
     } catch {
