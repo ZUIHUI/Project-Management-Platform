@@ -15,9 +15,11 @@ export default function Notifications() {
     try {
       setError("");
       const response = await notificationsService.fetchNotifications(currentUser?.id);
-      setNotifications(response.data?.data ?? []);
+      const data = response.data?.data;
+      setNotifications(Array.isArray(data) ? data : []);
     } catch (loadError) {
       setError(loadError?.response?.data?.error?.message ?? "無法載入通知");
+      setNotifications([]);
     }
   };
 
