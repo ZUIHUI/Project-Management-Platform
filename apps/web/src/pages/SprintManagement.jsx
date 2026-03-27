@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import Modal from './Modal';
+import { useParams } from 'react-router-dom';
+import Modal from '../components/Modal';
 
 const SprintCard = ({ sprint, onEdit, onDelete, onViewDetails }) => {
   const endDate = new Date(sprint.endAt);
@@ -70,7 +71,9 @@ const SprintCard = ({ sprint, onEdit, onDelete, onViewDetails }) => {
   );
 };
 
-export default function SprintManagement({ projectId, sprints = [], onSave, onDelete }) {
+export default function SprintManagement({ projectId = null, sprints = [], onSave, onDelete }) {
+  const { projectId: routeProjectId } = useParams();
+  const finalProjectId = projectId || routeProjectId || 'current';
   const [showModal, setShowModal] = useState(false);
   const [editingSprint, setEditingSprint] = useState(null);
   const [formData, setFormData] = useState({

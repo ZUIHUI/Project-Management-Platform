@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useParams } from 'react-router-dom';
 import Modal from './Modal';
 
 const MilestoneCard = ({ milestone, onEdit, onDelete, onViewDetails }) => {
@@ -70,7 +71,9 @@ const MilestoneCard = ({ milestone, onEdit, onDelete, onViewDetails }) => {
   );
 };
 
-export default function MilestoneManagement({ projectId, milestones = [], onSave, onDelete }) {
+export default function MilestoneManagement({ projectId = null, milestones = [], onSave, onDelete }) {
+  const { projectId: routeProjectId } = useParams();
+  const finalProjectId = projectId || routeProjectId || 'current';
   const [showModal, setShowModal] = useState(false);
   const [editingMilestone, setEditingMilestone] = useState(null);
   const [formData, setFormData] = useState({

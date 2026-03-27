@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import Modal from './Modal';
+import { useParams } from 'react-router-dom';
+import Modal from '../components/Modal';
 
 const MemberCard = ({ member, onRemove, onRoleChange, availableRoles = ['Member', 'Project Lead', 'Project Admin'] }) => {
   const [isEditingRole, setIsEditingRole] = useState(false);
@@ -73,7 +74,9 @@ const MemberCard = ({ member, onRemove, onRoleChange, availableRoles = ['Member'
   );
 };
 
-export default function TeamManagement({ projectId, team = [], onAddMember, onRemoveMember, onRoleChange }) {
+export default function TeamManagement({ projectId = null, team = [], onAddMember, onRemoveMember, onRoleChange }) {
+  const { projectId: routeProjectId } = useParams();
+  const finalProjectId = projectId || routeProjectId || 'current';
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     email: '',

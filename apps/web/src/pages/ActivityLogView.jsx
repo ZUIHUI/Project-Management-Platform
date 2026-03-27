@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useParams } from 'react-router-dom';
 
 const ActivityItem = ({ activity }) => {
   const actionLabel = {
@@ -71,7 +72,9 @@ const ActivityItem = ({ activity }) => {
   );
 };
 
-export default function ActivityLogView({ projectId, activities = [] }) {
+export default function ActivityLogView({ projectId = null, activities = [] }) {
+  const { projectId: routeProjectId } = useParams();
+  const finalProjectId = projectId || routeProjectId || 'current';
   const [filterAction, setFilterAction] = useState('all');
   const [filterActor, setFilterActor] = useState('all');
   const [sortOrder, setSortOrder] = useState('desc');

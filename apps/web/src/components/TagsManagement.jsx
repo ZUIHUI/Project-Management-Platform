@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useParams } from 'react-router-dom';
 import Modal from './Modal';
 
 const TagBadge = ({ tag, onEdit, onDelete, selected = false, onClick }) => {
@@ -77,7 +78,9 @@ const ColorPicker = ({ value, onChange }) => {
   );
 };
 
-export default function TagsManagement({ organizationId, tags = [], onSave, onDelete }) {
+export default function TagsManagement({ organizationId, tags = [], onSave, onDelete } = {}) {
+  const { organizationId: paramOrgId } = useParams();
+  const effectiveOrgId = organizationId || paramOrgId || 'org-default';
   const [showModal, setShowModal] = useState(false);
   const [editingTag, setEditingTag] = useState(null);
   const [formData, setFormData] = useState({

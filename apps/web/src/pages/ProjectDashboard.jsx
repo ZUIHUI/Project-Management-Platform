@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useParams } from 'react-router-dom';
 import BoardView from '../components/BoardView';
 import CalendarView from '../components/CalendarView';
 import GanttView from '../components/GanttView';
 import TaskDetailPanel from '../components/TaskDetailPanel';
 
-export default function ProjectDetailDashboard({ projectId = 'PROJECT-001' }) {
+export default function ProjectDashboard() {
+  const { projectId } = useParams();
   const [selectedView, setSelectedView] = useState('board');
   const [selectedTask, setSelectedTask] = useState(null);
   const [tasks, setTasks] = useState([

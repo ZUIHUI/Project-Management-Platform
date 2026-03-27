@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useParams } from 'react-router-dom';
 
 const StatCard = ({ title, value, subtitle, color = 'blue' }) => {
   const bgColor = color === 'blue' ? 'bg-blue-50' :
@@ -40,7 +41,9 @@ const ChartBar = ({ label, value, max, color = 'bg-blue-500' }) => {
   );
 };
 
-export default function InsightsPage({ projectId, tasks = [] }) {
+export default function InsightsPage({ projectId = null, tasks = [] }) {
+  const { projectId: routeProjectId } = useParams();
+  const finalProjectId = projectId || routeProjectId || 'current';
   const statistics = useMemo(() => {
     const total = tasks.length;
     const completed = tasks.filter(t => t.status === 'Done').length;
