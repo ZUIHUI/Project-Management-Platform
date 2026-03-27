@@ -1,288 +1,189 @@
-import { db, idFactory, persistDb } from "../../data/inMemoryDB.js";
+import { db, idFactory } from '../../data/db.js';
 
 const PROJECT_KEY_PATTERN = /^[A-Z][A-Z0-9_-]{1,11}$/;
 
-const withProjectMeta = (projectId) => ({
-  members: db.projectMembers.filter((member) => member.projectId === projectId),
-  milestones: db.milestones.filter((item) => item.projectId === projectId),
-  sprints: db.sprints.filter((item) => item.projectId === projectId),
-});
-
-const buildTimelineItems = (projectId) => {
-  const statusMap = new Map(db.statuses.map((status) => [status.id, status]));
-
-  const milestoneItems = db.milestones
-    .filter((milestone) => milestone.projectId === projectId)
-    .map((milestone) => ({
-      type: "milestone",
-      id: milestone.id,
-      name: milestone.name,
-      startAt: null,
-      endAt: milestone.dueAt,
-      status: milestone.status,
-    }));
-
-  const sprintItems = db.sprints
-    .filter((sprint) => sprint.projectId === projectId)
-    .map((sprint) => ({
-      type: "sprint",
-      id: sprint.id,
-      name: sprint.name,
-      startAt: sprint.startAt,
-      endAt: sprint.endAt,
-      status: sprint.status,
-    }));
-
-  const issueItems = db.issues
-    .filter((issue) => issue.projectId === projectId)
-    .filter((issue) => issue.dueAt)
-    .map((issue) => ({
-      type: "issue",
-      id: issue.id,
-      name: `#${issue.number} ${issue.title}`,
-      startAt: null,
-      endAt: issue.dueAt,
-      status: statusMap.get(issue.statusId)?.name ?? issue.statusId,
-    }));
-
-  return [...milestoneItems, ...sprintItems, ...issueItems].sort((left, right) => {
-    const leftDate = Date.parse(left.startAt ?? left.endAt ?? "9999-12-31T00:00:00.000Z");
-    const rightDate = Date.parse(right.startAt ?? right.endAt ?? "9999-12-31T00:00:00.000Z");
-    return leftDate - rightDate;
-  });
-};
-
 const parsePaging = (query = {}) => {
-  const page = Math.max(Number.parseInt(query.page ?? "1", 10) || 1, 1);
-  const pageSize = Math.min(Math.max(Number.parseInt(query.pageSize ?? "20", 10) || 20, 1), 100);
+  const page = Math.max(Number.parseInt(query.page ?? '1', 10) || 1, 1);
+  const pageSize = Math.min(Math.max(Number.parseInt(query.pageSize ?? '20', 10) || 20, 1), 100);
   return { page, pageSize };
 };
 
+const withProjectMeta = async (project) => {
+  const [members, milestones, sprints] = await Promise.all([
+    db.projectMember.findMany({ where: { projectId: project.id } }),
+    db.milestone.findMany({ where: { projectId: project.id } }),
+    db.sprint.findMany({ where: { projectId: project.id } }),
+  ]);
+  return { ...project, members, milestones, sprints };
+};
+
 export const projectService = {
-  list(query = {}) {
-    const keyword = `${query.q ?? ""}`.trim().toLowerCase();
+  async list(query = {}) {
+    const keyword = `${query.q ?? ''}`.trim();
     const status = query.status ?? null;
     const { page, pageSize } = parsePaging(query);
 
-    const filtered = db.projects
-      .filter((project) => !status || project.status === status)
-      .filter(
-        (project) =>
-          !keyword ||
-          project.name.toLowerCase().includes(keyword) ||
-          project.key.toLowerCase().includes(keyword),
-      );
+    const where = {
+      ...(status ? { status } : {}),
+      ...(keyword
+        ? { OR: [{ name: { contains: keyword } }, { key: { contains: keyword } }] }
+        : {}),
+    };
 
-    const offset = (page - 1) * pageSize;
-    const data = filtered.slice(offset, offset + pageSize).map((project) => ({
-      ...project,
-      ...withProjectMeta(project.id),
-    }));
+    const [total, projects] = await Promise.all([
+      db.project.count({ where }),
+      db.project.findMany({ where, skip: (page - 1) * pageSize, take: pageSize, orderBy: { updatedAt: 'desc' } }),
+    ]);
 
     return {
-      data,
+      data: await Promise.all(projects.map(withProjectMeta)),
       page,
       pageSize,
-      total: filtered.length,
-      totalPages: Math.max(Math.ceil(filtered.length / pageSize), 1),
+      total,
+      totalPages: Math.max(Math.ceil(total / pageSize), 1),
     };
   },
 
-  get(projectId) {
-    const project = db.projects.find((item) => item.id === projectId);
-    if (!project) {
-      return null;
-    }
-
-    return {
-      ...project,
-      ...withProjectMeta(projectId),
-    };
+  async get(projectId) {
+    const project = await db.project.findUnique({ where: { id: projectId } });
+    return project ? withProjectMeta(project) : null;
   },
 
-  timeline(projectId) {
-    const project = db.projects.find((item) => item.id === projectId);
-    if (!project) {
-      return { error: "Project not found", status: 404 };
-    }
+  async timeline(projectId) {
+    const project = await db.project.findUnique({ where: { id: projectId } });
+    if (!project) return { error: 'Project not found', status: 404 };
 
-    return {
-      timeline: {
-        project: {
-          id: project.id,
-          key: project.key,
-          name: project.name,
-          status: project.status,
-        },
-        items: buildTimelineItems(projectId),
-        lastSync: new Date().toISOString(),
-      },
-    };
+    const [statuses, milestones, sprints, issues] = await Promise.all([
+      db.status.findMany(),
+      db.milestone.findMany({ where: { projectId } }),
+      db.sprint.findMany({ where: { projectId } }),
+      db.issue.findMany({ where: { projectId, dueDate: { not: null } } }),
+    ]);
+
+    const statusMap = new Map(statuses.map((s) => [s.id, s.name]));
+    const items = [
+      ...milestones.map((m) => ({ type: 'milestone', id: m.id, name: m.name, startAt: null, endAt: m.dueAt, status: m.status })),
+      ...sprints.map((s) => ({ type: 'sprint', id: s.id, name: s.name, startAt: s.startAt, endAt: s.endAt, status: s.status })),
+      ...issues.map((i) => ({ type: 'issue', id: i.id, name: `#${i.number} ${i.title}`, startAt: null, endAt: i.dueDate, status: statusMap.get(i.statusId) ?? i.statusId })),
+    ].sort((a, b) => Date.parse(a.startAt ?? a.endAt ?? '9999-12-31T00:00:00.000Z') - Date.parse(b.startAt ?? b.endAt ?? '9999-12-31T00:00:00.000Z'));
+
+    return { timeline: { project: { id: project.id, key: project.key, name: project.name, status: project.status }, items, lastSync: new Date().toISOString() } };
   },
 
-  create(payload) {
+  async create(payload) {
     if (!payload.key || !PROJECT_KEY_PATTERN.test(payload.key)) {
-      return {
-        error: "project key must be 2-12 chars, uppercase letters/numbers/_/- and start with a letter",
-        status: 422,
-      };
+      return { error: 'project key must be 2-12 chars, uppercase letters/numbers/_/- and start with a letter', status: 422 };
     }
 
-    const existing = db.projects.find((item) => item.key === payload.key);
-    if (existing) {
-      return { error: "Project key already exists", status: 409 };
-    }
+    const existing = await db.project.findUnique({ where: { key: payload.key } });
+    if (existing) return { error: 'Project key already exists', status: 409 };
 
-    const timestamp = new Date().toISOString();
-    const project = {
-      id: idFactory("proj"),
-      key: payload.key,
-      name: payload.name,
-      description: payload.description ?? "",
-      ownerId: payload.ownerId ?? null,
-      status: payload.status ?? "active",
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    };
+    const project = await db.project.create({
+      data: {
+        id: idFactory('proj'),
+        key: payload.key,
+        name: payload.name,
+        description: payload.description ?? '',
+        ownerId: payload.ownerId ?? 'user-pm',
+        status: payload.status ?? 'active',
+      },
+    });
 
-    db.projects.push(project);
-    persistDb();
-    return { project: this.get(project.id) };
+    return { project: await withProjectMeta(project) };
   },
 
-  update(projectId, payload) {
-    const project = db.projects.find((item) => item.id === projectId);
-    if (!project) {
-      return { error: "Project not found", status: 404 };
-    }
+  async update(projectId, payload) {
+    const project = await db.project.findUnique({ where: { id: projectId } });
+    if (!project) return { error: 'Project not found', status: 404 };
 
     if (payload.key && payload.key !== project.key) {
       if (!PROJECT_KEY_PATTERN.test(payload.key)) {
-        return {
-          error: "project key must be 2-12 chars, uppercase letters/numbers/_/- and start with a letter",
-          status: 422,
-        };
+        return { error: 'project key must be 2-12 chars, uppercase letters/numbers/_/- and start with a letter', status: 422 };
       }
-
-      const existing = db.projects.find((item) => item.key === payload.key && item.id !== projectId);
-      if (existing) {
-        return { error: "Project key already exists", status: 409 };
-      }
+      const existing = await db.project.findUnique({ where: { key: payload.key } });
+      if (existing && existing.id !== projectId) return { error: 'Project key already exists', status: 409 };
     }
 
-    project.key = payload.key ?? project.key;
-    project.name = payload.name ?? project.name;
-    project.description = payload.description ?? project.description;
-    project.ownerId = payload.ownerId ?? project.ownerId;
-    project.status = payload.status ?? project.status;
-    project.updatedAt = new Date().toISOString();
-    persistDb();
+    const updated = await db.project.update({
+      where: { id: projectId },
+      data: {
+        key: payload.key ?? project.key,
+        name: payload.name ?? project.name,
+        description: payload.description ?? project.description,
+        ownerId: payload.ownerId ?? project.ownerId,
+        status: payload.status ?? project.status,
+      },
+    });
 
-    return { project: this.get(projectId) };
+    return { project: await withProjectMeta(updated) };
   },
 
-  remove(projectId) {
-    const index = db.projects.findIndex((item) => item.id === projectId);
-    if (index < 0) {
-      return { error: "Project not found", status: 404 };
-    }
+  async remove(projectId) {
+    const project = await db.project.findUnique({ where: { id: projectId } });
+    if (!project) return { error: 'Project not found', status: 404 };
 
-    const [project] = db.projects.splice(index, 1);
-    db.projectMembers = db.projectMembers.filter((item) => item.projectId !== projectId);
-    db.milestones = db.milestones.filter((item) => item.projectId !== projectId);
-    db.sprints = db.sprints.filter((item) => item.projectId !== projectId);
-    persistDb();
-
+    await db.project.delete({ where: { id: projectId } });
     return { project };
   },
 
-  archive(projectId) {
-    const project = this.get(projectId);
-    if (!project) {
-      return { error: "Project not found", status: 404 };
-    }
+  async archive(projectId) {
+    const project = await this.get(projectId);
+    if (!project) return { error: 'Project not found', status: 404 };
 
-    const hasBlockingIssue = db.issues.some(
-      (issue) => issue.projectId === projectId && issue.priority === "high" && issue.statusId !== "done",
-    );
-    if (hasBlockingIssue) {
-      return {
-        error: "Cannot archive project with unfinished high priority issues",
-        status: 409,
-      };
-    }
+    const highOpen = await db.issue.count({ where: { projectId, priority: 'high', NOT: { statusId: 'done' } } });
+    if (highOpen > 0) return { error: 'Cannot archive project with unfinished high priority issues', status: 409 };
 
-    return this.update(projectId, { status: "archived" });
+    return this.update(projectId, { status: 'archived' });
   },
 
-  addMember(projectId, userId, role) {
-    const project = db.projects.find((item) => item.id === projectId);
-    if (!project) {
-      return { error: "Project not found", status: 404 };
-    }
+  async addMember(projectId, userId, role) {
+    const [project, user] = await Promise.all([
+      db.project.findUnique({ where: { id: projectId } }),
+      db.user.findUnique({ where: { id: userId } }),
+    ]);
+    if (!project) return { error: 'Project not found', status: 404 };
+    if (!user) return { error: 'User not found', status: 404 };
 
-    const user = db.users.find((item) => item.id === userId);
-    if (!user) {
-      return { error: "User not found", status: 404 };
-    }
-
-    const existing = db.projectMembers.find(
-      (member) => member.projectId === projectId && member.userId === userId,
-    );
-
-    if (existing) {
-      existing.role = role;
-      persistDb();
-      return { member: existing };
-    }
-
-    const member = { projectId, userId, role };
-    db.projectMembers.push(member);
-    persistDb();
+    const member = await db.projectMember.upsert({
+      where: { projectId_userId: { projectId, userId } },
+      update: { role },
+      create: { projectId, userId, role },
+    });
     return { member };
   },
 
-  createMilestone(projectId, payload) {
-    if (!db.projects.some((project) => project.id === projectId)) {
-      return { error: "Project not found", status: 404 };
-    }
+  async createMilestone(projectId, payload) {
+    if (!(await db.project.findUnique({ where: { id: projectId } }))) return { error: 'Project not found', status: 404 };
 
-    const milestone = {
-      id: idFactory("ms"),
-      projectId,
-      name: payload.name,
-      dueAt: payload.dueAt ?? null,
-      status: payload.status ?? "open",
-      createdAt: new Date().toISOString(),
-    };
-
-    db.milestones.push(milestone);
-    persistDb();
+    const milestone = await db.milestone.create({
+      data: {
+        id: idFactory('ms'),
+        projectId,
+        name: payload.name,
+        dueAt: payload.dueAt ?? null,
+        status: payload.status ?? 'open',
+      },
+    });
     return { milestone };
   },
 
-  createSprint(projectId, payload) {
-    if (!db.projects.some((project) => project.id === projectId)) {
-      return { error: "Project not found", status: 404 };
-    }
-
+  async createSprint(projectId, payload) {
+    if (!(await db.project.findUnique({ where: { id: projectId } }))) return { error: 'Project not found', status: 404 };
     if (payload.startAt && payload.endAt && new Date(payload.startAt) >= new Date(payload.endAt)) {
-      return { error: "startAt must be earlier than endAt", status: 422 };
+      return { error: 'startAt must be earlier than endAt', status: 422 };
     }
 
-    const sprint = {
-      id: idFactory("sp"),
-      projectId,
-      name: payload.name,
-      goal: payload.goal ?? "",
-      startAt: payload.startAt ?? new Date().toISOString(),
-      endAt: payload.endAt ?? null,
-      status: payload.status ?? "planned",
-      createdAt: new Date().toISOString(),
-    };
-
-    db.sprints.push(sprint);
-    persistDb();
+    const sprint = await db.sprint.create({
+      data: {
+        id: idFactory('sp'),
+        projectId,
+        name: payload.name,
+        goal: payload.goal ?? '',
+        startAt: payload.startAt ?? new Date().toISOString(),
+        endAt: payload.endAt ?? null,
+        status: payload.status ?? 'planned',
+      },
+    });
     return { sprint };
   },
 };

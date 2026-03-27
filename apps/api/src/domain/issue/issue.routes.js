@@ -5,14 +5,14 @@ import { fail, ok } from "../shared/http.js";
 
 const router = Router();
 
-router.get("/workflows/statuses", (req, res) => ok(res, issueService.statuses()));
+router.get("/workflows/statuses", async (req, res) => ok(res, await issueService.statuses()));
 
-router.get("/projects/:projectId/board", requireProjectScope({ mode: "read" }), (req, res) => {
-  return ok(res, issueService.board(req.params.projectId));
+router.get("/projects/:projectId/board", requireProjectScope({ mode: "read" }), async (req, res) => {
+  return ok(res, await issueService.board(req.params.projectId));
 });
 
-router.get("/projects/:projectId/issues", requireProjectScope({ mode: "read" }), (req, res) => {
-  const result = issueService.listByProject(req.params.projectId, req.query);
+router.get("/projects/:projectId/issues", requireProjectScope({ mode: "read" }), async (req, res) => {
+  const result = await issueService.listByProject(req.params.projectId, req.query);
   return ok(res, result.data, 200, {
     page: result.page,
     pageSize: result.pageSize,
@@ -21,8 +21,8 @@ router.get("/projects/:projectId/issues", requireProjectScope({ mode: "read" }),
   });
 });
 
-router.post("/projects/:projectId/issues", requireRole("member"), requireProjectScope({ mode: "write" }), (req, res) => {
-  const result = issueService.create(req.params.projectId, req.body, req.currentUser?.id ?? null);
+router.post("/projects/:projectId/issues", requireRole("member"), requireProjectScope({ mode: "write" }), async (req, res) => {
+  const result = await issueService.create(req.params.projectId, req.body, req.currentUser?.id ?? null);
   if (result.error) {
     return fail(res, result.status ?? 422, result.error, result.extra);
   }
@@ -30,8 +30,8 @@ router.post("/projects/:projectId/issues", requireRole("member"), requireProject
   return ok(res, result.issue, 201);
 });
 
-router.get("/issues/:issueId", requireProjectScope({ mode: "read", source: "issue" }), (req, res) => {
-  const issue = issueService.get(req.params.issueId);
+router.get("/issues/:issueId", requireProjectScope({ mode: "read", source: "issue" }), async (req, res) => {
+  const issue = await issueService.get(req.params.issueId);
   if (!issue) {
     return fail(res, 404, "Issue not found");
   }
@@ -39,8 +39,8 @@ router.get("/issues/:issueId", requireProjectScope({ mode: "read", source: "issu
   return ok(res, issue);
 });
 
-router.patch("/issues/:issueId", requireRole("member"), requireProjectScope({ mode: "write", source: "issue" }), (req, res) => {
-  const result = issueService.update(req.params.issueId, req.body, req.currentUser?.id ?? null);
+router.patch("/issues/:issueId", requireRole("member"), requireProjectScope({ mode: "write", source: "issue" }), async (req, res) => {
+  const result = await issueService.update(req.params.issueId, req.body, req.currentUser?.id ?? null);
   if (result.error) {
     return fail(res, result.status ?? 422, result.error);
   }
@@ -48,8 +48,8 @@ router.patch("/issues/:issueId", requireRole("member"), requireProjectScope({ mo
   return ok(res, result.issue);
 });
 
-router.patch("/issues/:issueId/assignee", requireRole("member"), requireProjectScope({ mode: "write", source: "issue" }), (req, res) => {
-  const result = issueService.assign(req.params.issueId, req.body.assigneeId, req.currentUser?.id ?? null);
+router.patch("/issues/:issueId/assignee", requireRole("member"), requireProjectScope({ mode: "write", source: "issue" }), async (req, res) => {
+  const result = await issueService.assign(req.params.issueId, req.body.assigneeId, req.currentUser?.id ?? null);
   if (result.error) {
     return fail(res, result.status ?? 422, result.error);
   }
@@ -57,13 +57,13 @@ router.patch("/issues/:issueId/assignee", requireRole("member"), requireProjectS
   return ok(res, result.issue);
 });
 
-router.patch("/issues/:issueId/status", requireRole("member"), requireProjectScope({ mode: "write", source: "issue" }), (req, res) => {
+router.patch("/issues/:issueId/status", requireRole("member"), requireProjectScope({ mode: "write", source: "issue" }), async (req, res) => {
   const { statusId } = req.body;
   if (!statusId) {
     return fail(res, 422, "statusId is required");
   }
 
-  const result = issueService.transition(req.params.issueId, statusId, req.currentUser?.id ?? null);
+  const result = await issueService.transition(req.params.issueId, statusId, req.currentUser?.id ?? null);
   if (result.error) {
     return fail(res, result.status ?? 422, result.error, result.extra);
   }
@@ -71,10 +71,10 @@ router.patch("/issues/:issueId/status", requireRole("member"), requireProjectSco
   return ok(res, result.issue);
 });
 
-router.get("/issues/:issueId/comments", requireProjectScope({ mode: "read", source: "issue" }), (req, res) => ok(res, issueService.listComments(req.params.issueId)));
+router.get("/issues/:issueId/comments", requireProjectScope({ mode: "read", source: "issue" }), async (req, res) => ok(res, await issueService.listComments(req.params.issueId)));
 
-router.post("/issues/:issueId/comments", requireRole("member"), requireProjectScope({ mode: "write", source: "issue" }), (req, res) => {
-  const result = issueService.comment(req.params.issueId, req.body, req.currentUser?.id ?? null);
+router.post("/issues/:issueId/comments", requireRole("member"), requireProjectScope({ mode: "write", source: "issue" }), async (req, res) => {
+  const result = await issueService.comment(req.params.issueId, req.body, req.currentUser?.id ?? null);
   if (result.error) {
     return fail(res, result.status ?? 422, result.error);
   }
@@ -82,12 +82,12 @@ router.post("/issues/:issueId/comments", requireRole("member"), requireProjectSc
   return ok(res, result.comment, 201);
 });
 
-router.get("/activity-logs", requireRole("member"), (req, res) => ok(res, issueService.activityLogs()));
+router.get("/activity-logs", requireRole("member"), async (req, res) => ok(res, await issueService.activityLogs()));
 
-router.get("/tasks", (req, res) => {
+router.get("/tasks", async (req, res) => {
   res.set("Deprecation", "true");
   res.set("Sunset", "2026-12-31");
-  return ok(res, issueService.legacyTasks());
+  return ok(res, await issueService.legacyTasks());
 });
 
 export default router;

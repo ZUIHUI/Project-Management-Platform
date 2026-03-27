@@ -12,7 +12,10 @@
     "pretest:compat": "npm run prisma:setup && npm run db:seed",
     "test:compat": "node scripts/verify-legacy-compat.mjs",
     "pretest:contract": "npm run prisma:setup && npm run db:seed",
-    "test:contract": "node scripts/contract.mjs"
+    "test:contract": "node scripts/contract.mjs",
+    "test:contract:gate": "node scripts/contract-gate.mjs",
+    "pretest:integration": "npm run prisma:setup && npm run db:seed",
+    "test:integration": "node scripts/integration.mjs"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.5.0",

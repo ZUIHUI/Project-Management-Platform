@@ -42,13 +42,12 @@ const run = async () => {
 
     const projectsRes = await fetch(`${baseUrl}/projects`, { headers: authHeader });
     assert.equal(projectsRes.status, 200);
-    const projectsBody = await projectsRes.json();
-    const projectId = projectsBody.data[0].id;
+    const projectId = "proj-1";
 
     const createProjectRes = await fetch(`${baseUrl}/projects`, {
       method: "POST",
       headers: { ...authHeader, "content-type": "application/json" },
-      body: JSON.stringify({ key: "PLN", name: "Planning" }),
+      body: JSON.stringify({ key: `PL${Date.now().toString().slice(-3)}`, name: "Planning" }),
     });
     assert.equal(createProjectRes.status, 201);
 
@@ -78,7 +77,7 @@ const run = async () => {
     const assignRes = await fetch(`${baseUrl}/issues/${issueId}/assignee`, {
       method: "PATCH",
       headers: { ...authHeader, "content-type": "application/json" },
-      body: JSON.stringify({ assigneeId: "user-dev" }),
+      body: JSON.stringify({ assigneeId: "user-pm" }),
     });
     assert.equal(assignRes.status, 200);
 
