@@ -3,6 +3,15 @@ import type { AxiosRequestConfig, AxiosResponse } from "axios";
 const now = () => new Date().toISOString();
 
 const db = {
+  users: [
+    {
+      id: "user-demo",
+      name: "Demo User",
+      email: "demo@example.com",
+      password: "demo1234",
+      role: "member",
+    },
+  ],
   projects: [
     {
       id: "proj-1",
@@ -24,6 +33,7 @@ const db = {
 
 let seq = 1;
 const nextId = (prefix: string) => `${prefix}-${seq++}`;
+const fakeToken = (prefix: string, userId: string) => `${prefix}-${userId}-${Date.now()}`;
 
 const body = (config: AxiosRequestConfig) => {
   if (!config.data) return {};
@@ -42,6 +52,57 @@ const ok = (data: unknown, status = 200): AxiosResponse => ({
 export const mockAdapter = async (config: AxiosRequestConfig): Promise<AxiosResponse> => {
   const url = config.url ?? "";
   const method = (config.method ?? "get").toLowerCase();
+
+  if (method === "post" && url === "/register") {
+    const payload = body(config);
+    const email = String(payload.email ?? "").trim().toLowerCase();
+    const password = String(payload.password ?? "");
+    const name = String(payload.name ?? "").trim();
+
+    if (!email || !password || !name) {
+      return ok({ error: { message: "name, email and password are required", status: 422 } }, 422);
+    }
+
+    const existing = db.users.find((user) => user.email === email);
+    if (existing) {
+      return ok({ error: { message: "User already exists", status: 409 } }, 409);
+    }
+
+    const user = {
+      id: nextId("user"),
+      name,
+      email,
+      password,
+      role: String(payload.role ?? "member"),
+    };
+    db.users.push(user);
+
+    return ok(
+      {
+        accessToken: fakeToken("access", user.id),
+        refreshToken: fakeToken("refresh", user.id),
+        user: { id: user.id, name: user.name, role: user.role },
+      },
+      201,
+    );
+  }
+
+  if (method === "post" && url === "/login") {
+    const payload = body(config);
+    const email = String(payload.email ?? "").trim().toLowerCase();
+    const password = String(payload.password ?? "");
+    const user = db.users.find((entry) => entry.email === email);
+
+    if (!user || user.password !== password) {
+      return ok({ error: { message: "Invalid credentials", status: 401 } }, 401);
+    }
+
+    return ok({
+      accessToken: fakeToken("access", user.id),
+      refreshToken: fakeToken("refresh", user.id),
+      user: { id: user.id, name: user.name, role: user.role },
+    });
+  }
 
   if (method === "get" && url === "/projects") {
     return ok(db.projects);
