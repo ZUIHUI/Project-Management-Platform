@@ -4,11 +4,11 @@ import { icons } from "../icons";
 import { authService } from "../../features/auth/authService";
 
 const navItems = [
-  { name: "Home", path: "/home", icon: "dashboard" },
-  { name: "Projects", path: "/projects", icon: "project" },
-  { name: "Dashboard", path: "/dashboard", icon: "dashboard" },
-  { name: "Notifications", path: "/notifications", icon: "task" },
-  { name: "Settings", path: "/settings", icon: "project" },
+  { name: "Home", path: "/home", icon: "dashboard", minRole: "viewer" },
+  { name: "Projects", path: "/projects", icon: "project", minRole: "viewer" },
+  { name: "Dashboard", path: "/dashboard", icon: "dashboard", minRole: "member" },
+  { name: "Notifications", path: "/notifications", icon: "task", minRole: "member" },
+  { name: "Settings", path: "/settings", icon: "project", minRole: "viewer" },
 ];
 
 const ProjectIcon = icons.sidebartitle;
@@ -17,6 +17,8 @@ export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+  const currentUser = authService.getCurrentUser();
+  const visibleItems = navItems.filter((item) => authService.hasRole(item.minRole));
 
   const handleLogout = () => {
     authService.logout();
@@ -49,7 +51,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-2">
-        {navItems.map((item) => {
+        {visibleItems.map((item) => {
           const ItemIcon = icons[item.icon];
           const active = location.pathname === item.path;
           return (
@@ -75,6 +77,12 @@ export default function Sidebar() {
 
       {!collapsed ? (
         <div className="space-y-2 border-t border-blue-500/40 pt-4">
+          {currentUser ? (
+            <div className="rounded border border-blue-300/30 px-3 py-2 text-xs text-blue-100">
+              <div className="font-semibold">{currentUser.name}</div>
+              <div className="opacity-80">{currentUser.role}</div>
+            </div>
+          ) : null}
           <button
             type="button"
             onClick={handleLogout}

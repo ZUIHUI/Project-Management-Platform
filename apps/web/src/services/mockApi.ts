@@ -35,6 +35,18 @@ let seq = 1;
 const nextId = (prefix: string) => `${prefix}-${seq++}`;
 const fakeToken = (prefix: string, userId: string) => `${prefix}-${userId}-${Date.now()}`;
 const validPassword = (password: string) => password.length >= 8 && /[a-z]/.test(password) && /[A-Z]/.test(password) && /[0-9]/.test(password);
+const parseBearerToken = (config: AxiosRequestConfig) => {
+  const authHeader = (config.headers?.Authorization ?? config.headers?.authorization ?? "") as string;
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  const parts = token.split("-");
+  if (parts.length < 3) return null;
+  return parts.slice(1, -1).join("-");
+};
+const getCurrentUser = (config: AxiosRequestConfig) => {
+  const userId = parseBearerToken(config);
+  if (!userId) return null;
+  return db.users.find((user) => user.id === userId) ?? null;
+};
 
 const body = (config: AxiosRequestConfig) => {
   if (!config.data) return {};
@@ -109,7 +121,32 @@ export const mockAdapter = async (config: AxiosRequestConfig): Promise<AxiosResp
     });
   }
   if (method === "get" && url === "/me") {
-    const user = db.users[0];
+    const user = getCurrentUser(config);
+    if (!user) {
+      return ok({ error: { message: "Unauthorized: Missing token", status: 401 } }, 401);
+    }
+    return ok({ user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+  }
+
+  if (method === "put" && url === "/me") {
+    const user = getCurrentUser(config);
+    if (!user) {
+      return ok({ error: { message: "Unauthorized: Missing token", status: 401 } }, 401);
+    }
+    const payload = body(config);
+    const name = String(payload.name ?? "").trim();
+    const email = String(payload.email ?? "").trim().toLowerCase();
+    if (!name || name.length < 2) {
+      return ok({ error: { message: "Name must be at least 2 characters", status: 422 } }, 422);
+    }
+    if (!email.includes("@")) {
+      return ok({ error: { message: "A valid email is required", status: 422 } }, 422);
+    }
+    if (db.users.some((entry) => entry.email === email && entry.id !== user.id)) {
+      return ok({ error: { message: "Email already in use", status: 409 } }, 409);
+    }
+    user.name = name;
+    user.email = email;
     return ok({ user: { id: user.id, name: user.name, email: user.email, role: user.role } });
   }
 
@@ -220,14 +257,18 @@ export const mockAdapter = async (config: AxiosRequestConfig): Promise<AxiosResp
   }
 
   if (method === "get" && url === "/notifications") {
-    return ok(db.notifications);
+    const user = getCurrentUser(config);
+    if (!user) {
+      return ok({ error: { message: "Unauthorized: Missing token", status: 401 } }, 401);
+    }
+    return ok(db.notifications.filter((item) => item.userId === user.id));
   }
 
   if (method === "post" && url === "/notifications") {
     const payload = body(config);
     const item = {
       id: nextId("noti"),
-      userId: String(payload.userId ?? db.users[0].id),
+      userId: String(payload.userId ?? getCurrentUser(config)?.id ?? db.users[0].id),
       type: String(payload.type ?? "system"),
       message: String(payload.message ?? ""),
       read: false,

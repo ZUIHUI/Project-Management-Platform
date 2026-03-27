@@ -54,6 +54,34 @@ export const authService = {
     };
   },
 
+  async updateProfile(userId, { name, email }) {
+    const user = await db.user.findUnique({ where: { id: userId } });
+    if (!user) return { error: 'User not found', status: 404 };
+
+    const nextName = `${name ?? ''}`.trim();
+    const nextEmail = `${email ?? ''}`.trim().toLowerCase();
+
+    if (!nextName || nextName.length < 2) {
+      return { error: 'Name must be at least 2 characters', status: 422 };
+    }
+
+    if (!nextEmail || !nextEmail.includes('@')) {
+      return { error: 'A valid email is required', status: 422 };
+    }
+
+    const existingUser = await db.user.findUnique({ where: { email: nextEmail } });
+    if (existingUser && existingUser.id !== userId) {
+      return { error: 'Email already in use', status: 409 };
+    }
+
+    const updated = await db.user.update({
+      where: { id: userId },
+      data: { name: nextName, email: nextEmail },
+    });
+
+    return { user: { id: updated.id, name: updated.name, email: updated.email, role: updated.role } };
+  },
+
   async changePassword(userId, currentPassword, newPassword) {
     const user = await db.user.findUnique({ where: { id: userId } });
     if (!user) return { error: 'User not found', status: 404 };

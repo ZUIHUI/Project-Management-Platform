@@ -32,6 +32,12 @@ authRouter.get('/me', requireAuth, async (req, res) => {
   return res.json(result);
 });
 
+authRouter.put('/me', requireAuth, async (req, res) => {
+  const result = await authService.updateProfile(req.currentUser?.id, req.body ?? {});
+  if (result.error) return fail(res, result.status ?? 422, result.error);
+  return res.json(result);
+});
+
 authRouter.post('/change-password', requireAuth, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   const result = await authService.changePassword(req.currentUser?.id, currentPassword, newPassword);
