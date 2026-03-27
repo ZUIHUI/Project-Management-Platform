@@ -1,4 +1,4 @@
-import { db, idFactory } from "../../data/inMemoryDB.js";
+import { db, idFactory, persistDb } from "../../data/inMemoryDB.js";
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -6,30 +6,32 @@ import {
   verifyPassword,
   verifyRefreshToken,
 } from "../../common/auth.js";
+import { PASSWORD_POLICY_TEXT, validateLoginPayload, validateRegisterPayload } from "./credentialPolicy.js";
 
 const findUserByEmail = async (email) => db.users.find((user) => user.email === email);
 
 export const authService = {
   async register({ name, email, password, role = "viewer" }) {
-    if (!name || !email || !password) {
-      return { error: "name, email and password are required", status: 422 };
+    const validated = validateRegisterPayload({ name, email, password });
+    if (validated.error) {
+      return validated;
     }
 
-    const normalizedEmail = email.toLowerCase();
-    const existingUser = await findUserByEmail(normalizedEmail);
+    const existingUser = await findUserByEmail(validated.email);
     if (existingUser) {
       return { error: "User already exists", status: 409 };
     }
 
-    const hashedPassword = await hashPassword(password);
+    const hashedPassword = await hashPassword(validated.password);
     const user = {
       id: idFactory("user"),
-      name,
-      email: normalizedEmail,
+      name: validated.name,
+      email: validated.email,
       role,
       password: hashedPassword,
     };
     db.users.push(user);
+    persistDb();
 
     const accessToken = generateAccessToken({ userId: user.id, role: user.role });
     const refreshToken = generateRefreshToken({ userId: user.id, role: user.role });
@@ -38,13 +40,17 @@ export const authService = {
   },
 
   async login(email, password) {
-    const normalizedEmail = (email || "").toLowerCase();
-    const user = await findUserByEmail(normalizedEmail);
+    const validated = validateLoginPayload(email, password);
+    if (validated.error) {
+      return validated;
+    }
+
+    const user = await findUserByEmail(validated.email);
     if (!user) {
       return { error: "Invalid credentials", status: 401 };
     }
 
-    const validPassword = await verifyPassword(password, user.password);
+    const validPassword = await verifyPassword(validated.password, user.password);
     if (!validPassword) {
       return { error: "Invalid credentials", status: 401 };
     }
@@ -53,6 +59,46 @@ export const authService = {
     const refreshToken = generateRefreshToken({ userId: user.id, role: user.role });
 
     return { accessToken, refreshToken, user: { id: user.id, name: user.name, role: user.role } };
+  },
+
+
+  getProfile(userId) {
+    const user = db.users.find((item) => item.id === userId);
+    if (!user) {
+      return { error: "User not found", status: 404 };
+    }
+
+    return {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      passwordPolicy: PASSWORD_POLICY_TEXT,
+    };
+  },
+
+  async changePassword(userId, currentPassword, newPassword) {
+    const user = db.users.find((item) => item.id === userId);
+    if (!user) {
+      return { error: "User not found", status: 404 };
+    }
+
+    const validCurrentPassword = await verifyPassword(`${currentPassword ?? ""}`, user.password);
+    if (!validCurrentPassword) {
+      return { error: "Current password is incorrect", status: 401 };
+    }
+
+    const policyCheck = validateRegisterPayload({ name: user.name, email: user.email, password: newPassword });
+    if (policyCheck.error) {
+      return policyCheck;
+    }
+
+    user.password = await hashPassword(policyCheck.password);
+    persistDb();
+
+    return { message: "Password updated" };
   },
 
   async refreshToken(token) {

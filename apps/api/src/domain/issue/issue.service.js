@@ -1,4 +1,4 @@
-import { db, idFactory } from "../../data/inMemoryDB.js";
+import { db, idFactory, persistDb } from "../../data/inMemoryDB.js";
 import { STATUS } from "../../config/constants.js";
 
 const DEFAULT_PAGE = 1;
@@ -157,6 +157,7 @@ export const issueService = {
 
     db.issues.push(issue);
     logActivity(actorId, "issue", issue.id, "issue.created", null, issue);
+    persistDb();
     notify(issue.assigneeId, "issue.assigned", { issueId: issue.id, issueNumber: issue.number });
 
     return { issue: normalizeIssue(issue) };
@@ -183,6 +184,7 @@ export const issueService = {
     issue.updatedAt = new Date().toISOString();
 
     logActivity(actorId, "issue", issue.id, "issue.updated", before, issue);
+    persistDb();
     return { issue: normalizeIssue(issue) };
   },
 
@@ -206,6 +208,7 @@ export const issueService = {
 
     logActivity(actorId, "issue", issue.id, "issue.assigned", before, issue);
     notify(assigneeId, "issue.assigned", { issueId: issue.id, issueNumber: issue.number });
+    persistDb();
 
     return { issue: normalizeIssue(issue) };
   },
@@ -229,6 +232,7 @@ export const issueService = {
     issue.statusId = statusId;
     issue.updatedAt = new Date().toISOString();
     logActivity(actorId, "issue", issue.id, "issue.status_changed", before, issue);
+    persistDb();
 
     return { issue: normalizeIssue(issue) };
   },
@@ -263,6 +267,7 @@ export const issueService = {
     });
 
     logActivity(actorId, "comment", comment.id, "issue.commented", null, comment);
+    persistDb();
     return { comment };
   },
 

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, idFactory } from "../../data/inMemoryDB.js";
+import { db, idFactory, persistDb } from "../../data/inMemoryDB.js";
 import { ok, fail } from "../shared/http.js";
 
 const router = Router();
@@ -29,6 +29,7 @@ router.post("/notifications", (req, res) => {
     createdAt: new Date().toISOString(),
   };
   db.notifications.push(notification);
+  persistDb();
 
   return ok(res, notification, 201);
 });
@@ -41,6 +42,7 @@ router.patch("/notifications/:notificationId/read", (req, res) => {
 
   notification.read = true;
   notification.readAt = new Date().toISOString();
+  persistDb();
   return ok(res, notification);
 });
 

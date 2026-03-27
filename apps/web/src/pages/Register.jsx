@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { authService } from "../features/auth/authService";
+import { PASSWORD_POLICY_TEXT, validateRegisterInput } from "../features/auth/credentialValidation";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -10,7 +11,9 @@ export default function Register() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!form.name.trim() || !form.email.trim() || !form.password.trim()) {
+    const validationError = validateRegisterInput(form.name, form.email, form.password);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -73,6 +76,7 @@ export default function Register() {
           >
             {submitting ? "建立中..." : "註冊帳號"}
           </button>
+          <p className="text-xs text-slate-500">{PASSWORD_POLICY_TEXT}</p>
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
         </form>
 
