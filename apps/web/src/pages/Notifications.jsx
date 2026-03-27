@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { notificationsService } from "../services/notifications";
-import { safeStorage } from "../shared/storage";
+import { authService } from "../features/auth/authService";
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
@@ -8,14 +8,7 @@ export default function Notifications() {
   const [error, setError] = useState("");
 
   const currentUser = useMemo(() => {
-    const raw = safeStorage.get("pmp.currentUser");
-    if (!raw) return null;
-
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return null;
-    }
+    return authService.getCurrentUser();
   }, []);
 
   const loadNotifications = async () => {
