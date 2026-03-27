@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { projectService } from "../features/project";
 import { issueService } from "../features/issue";
+import { notificationsService } from "../services/notifications";
+import { authService } from "../features/auth/authService";
 
 const PRIORITY_OPTIONS = ["low", "medium", "high"];
 
@@ -126,6 +128,14 @@ export default function Tasks({ viewMode = "list" }) {
 
     try {
       await issueService.transitionIssueStatus(issue.id, statuses[nextIndex].id);
+      const currentUser = authService.getCurrentUser();
+      if (currentUser?.id) {
+        await notificationsService.createNotification({
+          userId: currentUser.id,
+          type: "workflow_status_changed",
+          message: `Issue #${issue.number} 已由 ${statuses[index].name} 轉為 ${statuses[nextIndex].name}`,
+        });
+      }
       await loadIssues(projectId);
     } catch (err) {
       setError(getErrorMessage(err, "狀態更新失敗，請確認流程轉換規則"));

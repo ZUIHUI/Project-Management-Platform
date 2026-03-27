@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { authService } from "../features/auth/authService";
 import { validateLoginInput } from "../features/auth/credentialValidation";
 
@@ -8,6 +8,10 @@ export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    authService.logout();
+  }, []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();

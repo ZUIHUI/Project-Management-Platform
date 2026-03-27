@@ -28,13 +28,13 @@ export default function App() {
             }
           />
           <Route path="home" element={<RequireAuth><Home /></RequireAuth>} />
-          <Route path="dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+          <Route path="dashboard" element={<RequireAuth minRole="member"><Dashboard /></RequireAuth>} />
           <Route path="projects" element={<RequireAuth><Projects /></RequireAuth>} />
           <Route path="projects/:projectId" element={<RequireAuth><ProjectDetail /></RequireAuth>} />
           <Route path="projects/:projectId/issues" element={<RequireAuth><Tasks viewMode="list" /></RequireAuth>} />
           <Route path="projects/:projectId/board" element={<RequireAuth><Tasks viewMode="board" /></RequireAuth>} />
           <Route path="projects/:projectId/timeline" element={<RequireAuth><Timeline /></RequireAuth>} />
-          <Route path="notifications" element={<RequireAuth><Notifications /></RequireAuth>} />
+          <Route path="notifications" element={<RequireAuth minRole="member"><Notifications /></RequireAuth>} />
           <Route path="settings" element={<RequireAuth><Settings /></RequireAuth>} />
         </Route>
         <Route path="*" element={<Navigate to="/home" replace />} />

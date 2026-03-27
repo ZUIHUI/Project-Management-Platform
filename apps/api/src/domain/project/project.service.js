@@ -115,6 +115,22 @@ export const projectService = {
       },
     });
 
+    if (payload.status && payload.status !== project.status) {
+      const members = await db.projectMember.findMany({ where: { projectId }, select: { userId: true } });
+      const targetUserIds = [...new Set([project.ownerId, ...members.map((member) => member.userId)])];
+      if (targetUserIds.length > 0) {
+        await db.notification.createMany({
+          data: targetUserIds.map((userId) => ({
+            id: idFactory('noti'),
+            userId,
+            type: 'project_status_changed',
+            message: `Project ${updated.key} status changed: ${project.status} → ${updated.status}`,
+            read: false,
+          })),
+        });
+      }
+    }
+
     return { project: await withProjectMeta(updated) };
   },
 
