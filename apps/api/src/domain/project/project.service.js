@@ -8,6 +8,50 @@ const withProjectMeta = (projectId) => ({
   sprints: db.sprints.filter((item) => item.projectId === projectId),
 });
 
+const buildTimelineItems = (projectId) => {
+  const statusMap = new Map(db.statuses.map((status) => [status.id, status]));
+
+  const milestoneItems = db.milestones
+    .filter((milestone) => milestone.projectId === projectId)
+    .map((milestone) => ({
+      type: "milestone",
+      id: milestone.id,
+      name: milestone.name,
+      startAt: null,
+      endAt: milestone.dueAt,
+      status: milestone.status,
+    }));
+
+  const sprintItems = db.sprints
+    .filter((sprint) => sprint.projectId === projectId)
+    .map((sprint) => ({
+      type: "sprint",
+      id: sprint.id,
+      name: sprint.name,
+      startAt: sprint.startAt,
+      endAt: sprint.endAt,
+      status: sprint.status,
+    }));
+
+  const issueItems = db.issues
+    .filter((issue) => issue.projectId === projectId)
+    .filter((issue) => issue.dueAt)
+    .map((issue) => ({
+      type: "issue",
+      id: issue.id,
+      name: `#${issue.number} ${issue.title}`,
+      startAt: null,
+      endAt: issue.dueAt,
+      status: statusMap.get(issue.statusId)?.name ?? issue.statusId,
+    }));
+
+  return [...milestoneItems, ...sprintItems, ...issueItems].sort((left, right) => {
+    const leftDate = Date.parse(left.startAt ?? left.endAt ?? "9999-12-31T00:00:00.000Z");
+    const rightDate = Date.parse(right.startAt ?? right.endAt ?? "9999-12-31T00:00:00.000Z");
+    return leftDate - rightDate;
+  });
+};
+
 const parsePaging = (query = {}) => {
   const page = Math.max(Number.parseInt(query.page ?? "1", 10) || 1, 1);
   const pageSize = Math.min(Math.max(Number.parseInt(query.pageSize ?? "20", 10) || 20, 1), 100);
@@ -53,6 +97,26 @@ export const projectService = {
     return {
       ...project,
       ...withProjectMeta(projectId),
+    };
+  },
+
+  timeline(projectId) {
+    const project = db.projects.find((item) => item.id === projectId);
+    if (!project) {
+      return { error: "Project not found", status: 404 };
+    }
+
+    return {
+      timeline: {
+        project: {
+          id: project.id,
+          key: project.key,
+          name: project.name,
+          status: project.status,
+        },
+        items: buildTimelineItems(projectId),
+        lastSync: new Date().toISOString(),
+      },
     };
   },
 

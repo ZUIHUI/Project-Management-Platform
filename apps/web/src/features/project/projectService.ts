@@ -16,6 +16,10 @@ export const projectService = {
     return axiosInstance.get(`/projects/${id}`);
   },
 
+  fetchProjectTimeline(id: string) {
+    return axiosInstance.get(`/projects/${id}/timeline`);
+  },
+
   createProject(data: CreateProjectPayload) {
     return axiosInstance.post("/projects", data, {
       headers: { "x-role": "project_admin" },

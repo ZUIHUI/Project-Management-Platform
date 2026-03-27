@@ -111,6 +111,22 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /projects/{projectId}/timeline:
+    get:
+      summary: Get project timeline projection
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Project timeline items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectTimelineResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /projects/{projectId}/issues:
     get:
       summary: List issues by project
@@ -342,6 +358,38 @@ components:
             pageSize: { type: integer }
             total: { type: integer }
             totalPages: { type: integer }
+    ProjectTimelineItem:
+      type: object
+      properties:
+        type: { type: string, enum: [milestone, sprint, issue] }
+        id: { type: string }
+        name: { type: string }
+        startAt: { type: [string, 'null'], format: date-time }
+        endAt: { type: [string, 'null'], format: date-time }
+        status: { type: [string, 'null'] }
+    ProjectTimeline:
+      type: object
+      properties:
+        project:
+          type: object
+          properties:
+            id: { type: string }
+            key: { type: string }
+            name: { type: string }
+            status: { type: string }
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectTimelineItem'
+    ProjectTimelineResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/ProjectTimeline'
+        meta:
+          type: object
+          properties:
+            lastSync: { type: string, format: date-time }
     CreateProjectRequest:
       type: object
       required: [key, name]

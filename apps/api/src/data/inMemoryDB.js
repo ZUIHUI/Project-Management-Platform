@@ -48,9 +48,9 @@ export const db = {
     },
   ],
   statuses: [
-    { id: STATUS.TODO, name: "Todo", order: 1 },
-    { id: STATUS.DOING, name: "Doing", order: 2 },
-    { id: STATUS.DONE, name: "Done", order: 3 },
+    { id: STATUS.TODO, name: "Todo", category: "todo", order: 1 },
+    { id: STATUS.DOING, name: "Doing", category: "doing", order: 2 },
+    { id: STATUS.DONE, name: "Done", category: "done", order: 3 },
   ],
   transitions: {
     [STATUS.TODO]: [STATUS.DOING],

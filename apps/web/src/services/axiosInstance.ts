@@ -1,5 +1,6 @@
 import axios from "axios";
 import { mockAdapter } from "./mockApi";
+import { safeStorage } from "../shared/storage";
 
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
@@ -18,6 +19,14 @@ const axiosInstance = axios.create({
     "Content-Type": "application/json",
   },
   adapter: isDemoMode ? mockAdapter : undefined,
+});
+
+axiosInstance.interceptors.request.use((config) => {
+  const token = safeStorage.get("pmp.accessToken");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 export default axiosInstance;

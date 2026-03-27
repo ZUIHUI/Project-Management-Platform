@@ -9,6 +9,8 @@ import Tasks from "./pages/Tasks";
 import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
 import Home from "./pages/Home";
+import RequireAuth from "./components/auth/RequireAuth";
+import Timeline from "./pages/Timeline";
 
 export default function App() {
   return (
@@ -17,15 +19,23 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/" element={<MainLayout />}>
-          <Route index element={<Navigate to="/home" replace />} />
-          <Route path="home" element={<Home />} />
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="projects" element={<Projects />} />
-          <Route path="projects/:projectId" element={<ProjectDetail />} />
-          <Route path="projects/:projectId/issues" element={<Tasks viewMode="list" />} />
-          <Route path="projects/:projectId/board" element={<Tasks viewMode="board" />} />
-          <Route path="notifications" element={<Notifications />} />
-          <Route path="settings" element={<Settings />} />
+          <Route
+            index
+            element={
+              <RequireAuth>
+                <Navigate to="/home" replace />
+              </RequireAuth>
+            }
+          />
+          <Route path="home" element={<RequireAuth><Home /></RequireAuth>} />
+          <Route path="dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+          <Route path="projects" element={<RequireAuth><Projects /></RequireAuth>} />
+          <Route path="projects/:projectId" element={<RequireAuth><ProjectDetail /></RequireAuth>} />
+          <Route path="projects/:projectId/issues" element={<RequireAuth><Tasks viewMode="list" /></RequireAuth>} />
+          <Route path="projects/:projectId/board" element={<RequireAuth><Tasks viewMode="board" /></RequireAuth>} />
+          <Route path="projects/:projectId/timeline" element={<RequireAuth><Timeline /></RequireAuth>} />
+          <Route path="notifications" element={<RequireAuth><Notifications /></RequireAuth>} />
+          <Route path="settings" element={<RequireAuth><Settings /></RequireAuth>} />
         </Route>
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>

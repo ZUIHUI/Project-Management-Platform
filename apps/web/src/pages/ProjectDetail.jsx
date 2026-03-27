@@ -33,6 +33,9 @@ export default function ProjectDetail() {
         <Link to={`/projects/${project.id}/board`} className="rounded border px-3 py-2 text-sm">
           Board View
         </Link>
+        <Link to={`/projects/${project.id}/timeline`} className="rounded border px-3 py-2 text-sm">
+          Timeline
+        </Link>
       </div>
     </div>
   );

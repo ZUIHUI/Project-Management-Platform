@@ -1,16 +1,29 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { authService } from "../features/auth/authService";
 
 export default function Login() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: "", password: "" });
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     if (!form.email.trim() || !form.password.trim()) {
       return;
     }
-    navigate("/");
+
+    try {
+      setSubmitting(true);
+      setError("");
+      await authService.login(form.email.trim(), form.password);
+      navigate("/home");
+    } catch (loginError) {
+      setError(loginError?.response?.data?.error?.message ?? "登入失敗，請檢查帳號密碼");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -44,10 +57,12 @@ export default function Login() {
 
           <button
             type="submit"
+            disabled={submitting}
             className="w-full rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white transition hover:bg-blue-700"
           >
-            登入
+            {submitting ? "登入中..." : "登入"}
           </button>
+          {error ? <p className="text-sm text-red-600">{error}</p> : null}
         </form>
 
         <p className="mt-5 text-sm text-slate-600">
