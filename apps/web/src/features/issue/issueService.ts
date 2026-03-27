@@ -39,4 +39,32 @@ export const issueService = {
       },
     );
   },
+
+  assignIssue(id: string, assigneeId: string | null) {
+    return axiosInstance.patch(
+      `/issues/${id}/assignee`,
+      { assigneeId },
+      {
+        headers: { "x-role": "member" },
+      },
+    );
+  },
+
+  fetchIssueComments(id: string) {
+    return axiosInstance.get(`/issues/${id}/comments`);
+  },
+
+  createIssueComment(id: string, body: string) {
+    return axiosInstance.post(
+      `/issues/${id}/comments`,
+      { body },
+      {
+        headers: { "x-role": "member" },
+      },
+    );
+  },
+
+  fetchIssueActivity(id: string, limit = 30) {
+    return axiosInstance.get(`/issues/${id}/activity`, { params: { limit } });
+  },
 };

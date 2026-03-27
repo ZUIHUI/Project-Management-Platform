@@ -218,6 +218,19 @@ export const issueService = {
     return db.activityLog.findMany({ orderBy: { createdAt: 'desc' } });
   },
 
+  async issueActivity(issueId, query = {}) {
+    const issue = await db.issue.findUnique({ where: { id: issueId } });
+    if (!issue) return { error: 'Issue not found', status: 404 };
+
+    const limit = Math.min(Math.max(Number.parseInt(query.limit ?? '50', 10) || 50, 1), 200);
+    const data = await db.activityLog.findMany({
+      where: { issueId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+    return { data, limit };
+  },
+
   async legacyTasks() {
     const issues = await db.issue.findMany();
     return issues.map((issue) => ({

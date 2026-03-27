@@ -19,6 +19,11 @@ export default function Tasks({ viewMode = "list" }) {
   const [issues, setIssues] = useState([]);
   const [statuses, setStatuses] = useState([]);
   const [selectedIssueId, setSelectedIssueId] = useState("");
+  const [comments, setComments] = useState([]);
+  const [activityLogs, setActivityLogs] = useState([]);
+  const [commentDraft, setCommentDraft] = useState("");
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailSaving, setDetailSaving] = useState(false);
   const [keyword, setKeyword] = useState("");
   const [form, setForm] = useState({ title: "", description: "", priority: "medium" });
   const [loading, setLoading] = useState(true);
@@ -66,9 +71,12 @@ export default function Tasks({ viewMode = "list" }) {
       });
       const list = response.data?.data ?? [];
       setIssues(list);
-      if (list.length > 0) {
-        setSelectedIssueId((currentId) => currentId || list[0].id);
+      if (!list.length) {
+        setSelectedIssueId("");
+        return;
       }
+
+      setSelectedIssueId((currentId) => (list.some((item) => item.id === currentId) ? currentId : list[0].id));
     } catch (err) {
       setError(getErrorMessage(err, "無法載入 Issue 清單"));
     }
@@ -98,6 +106,33 @@ export default function Tasks({ viewMode = "list" }) {
   const statusIndex = useCallback((statusId) => statuses.findIndex((status) => status.id === statusId), [statuses]);
 
   const selectedIssue = useMemo(() => issues.find((issue) => issue.id === selectedIssueId), [issues, selectedIssueId]);
+  const projectMembers = useMemo(() => selectedProject?.members ?? [], [selectedProject]);
+
+  const loadIssueDetails = useCallback(async (issueId) => {
+    if (!issueId) {
+      setComments([]);
+      setActivityLogs([]);
+      return;
+    }
+
+    setDetailLoading(true);
+    try {
+      const [commentsRes, activityRes] = await Promise.all([
+        issueService.fetchIssueComments(issueId),
+        issueService.fetchIssueActivity(issueId, 20),
+      ]);
+      setComments(commentsRes.data?.data ?? []);
+      setActivityLogs(activityRes.data?.data ?? []);
+    } catch (err) {
+      setError(getErrorMessage(err, "無法載入 Issue 詳細資訊"));
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadIssueDetails(selectedIssueId);
+  }, [selectedIssueId, loadIssueDetails]);
 
   const handleCreate = async (event) => {
     event.preventDefault();
@@ -139,6 +174,34 @@ export default function Tasks({ viewMode = "list" }) {
       await loadIssues(projectId);
     } catch (err) {
       setError(getErrorMessage(err, "狀態更新失敗，請確認流程轉換規則"));
+    }
+  };
+
+  const handleAssign = async (issueId, assigneeId) => {
+    try {
+      setDetailSaving(true);
+      await issueService.assignIssue(issueId, assigneeId || null);
+      await Promise.all([loadIssues(projectId), loadIssueDetails(issueId)]);
+    } catch (err) {
+      setError(getErrorMessage(err, "指派失敗"));
+    } finally {
+      setDetailSaving(false);
+    }
+  };
+
+  const submitComment = async (event) => {
+    event.preventDefault();
+    if (!selectedIssueId || !commentDraft.trim()) return;
+
+    try {
+      setDetailSaving(true);
+      await issueService.createIssueComment(selectedIssueId, commentDraft.trim());
+      setCommentDraft("");
+      await loadIssueDetails(selectedIssueId);
+    } catch (err) {
+      setError(getErrorMessage(err, "留言新增失敗"));
+    } finally {
+      setDetailSaving(false);
     }
   };
 
@@ -251,11 +314,69 @@ export default function Tasks({ viewMode = "list" }) {
         <aside className="rounded-lg border bg-white p-4 shadow-sm">
           <h2 className="mb-2 font-semibold">Detail Panel</h2>
           {selectedIssue ? (
-            <div className="space-y-2 text-sm">
-              <p className="font-medium">#{selectedIssue.number} {selectedIssue.title}</p>
-              <p>狀態：{selectedIssue.statusId}</p>
-              <p>優先級：{selectedIssue.priority}</p>
-              <p className="text-gray-500">這裡可擴充 comment / activity log / assignee。</p>
+            <div className="space-y-4 text-sm">
+              <div className="space-y-1">
+                <p className="font-medium">#{selectedIssue.number} {selectedIssue.title}</p>
+                <p>狀態：{selectedIssue.statusId}</p>
+                <p>優先級：{selectedIssue.priority}</p>
+                <label className="flex flex-col gap-1">
+                  <span>指派成員</span>
+                  <select
+                    className="rounded border px-2 py-1"
+                    value={selectedIssue.assigneeId ?? ""}
+                    disabled={detailSaving}
+                    onChange={(event) => handleAssign(selectedIssue.id, event.target.value)}
+                  >
+                    <option value="">未指派</option>
+                    {projectMembers.map((member) => (
+                      <option key={member.userId} value={member.userId}>
+                        {member.userId} ({member.role})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <section className="space-y-2">
+                <h3 className="font-semibold">Comments</h3>
+                <form className="space-y-2" onSubmit={submitComment}>
+                  <textarea
+                    className="w-full rounded border px-2 py-1"
+                    rows={2}
+                    placeholder="輸入留言，可用 @name 提及成員"
+                    value={commentDraft}
+                    onChange={(event) => setCommentDraft(event.target.value)}
+                    disabled={detailSaving}
+                  />
+                  <button type="submit" className="rounded bg-slate-900 px-3 py-1 text-xs text-white disabled:opacity-50" disabled={detailSaving || !commentDraft.trim()}>
+                    送出留言
+                  </button>
+                </form>
+                <div className="max-h-48 space-y-2 overflow-auto pr-1">
+                  {comments.map((comment) => (
+                    <article key={comment.id} className="rounded border p-2">
+                      <p className="text-xs text-gray-500">{comment.authorId ?? "anonymous"} · {new Date(comment.createdAt).toLocaleString()}</p>
+                      <p className="whitespace-pre-wrap">{comment.body}</p>
+                    </article>
+                  ))}
+                  {!comments.length && !detailLoading ? <p className="text-xs text-gray-500">目前沒有留言</p> : null}
+                </div>
+              </section>
+
+              <section className="space-y-2">
+                <h3 className="font-semibold">Activity</h3>
+                <div className="max-h-48 space-y-2 overflow-auto pr-1">
+                  {activityLogs.map((log) => (
+                    <article key={log.id} className="rounded border p-2">
+                      <p className="text-xs text-gray-500">{log.actorId ?? "system"} · {new Date(log.createdAt).toLocaleString()}</p>
+                      <p>{log.action}</p>
+                    </article>
+                  ))}
+                  {!activityLogs.length && !detailLoading ? <p className="text-xs text-gray-500">目前沒有活動紀錄</p> : null}
+                </div>
+              </section>
+
+              {detailLoading ? <p className="text-xs text-gray-500">詳細資料載入中...</p> : null}
             </div>
           ) : (
             <p className="text-sm text-gray-500">請從左側選擇一個 Issue。</p>
