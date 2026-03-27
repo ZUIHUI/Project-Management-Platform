@@ -88,8 +88,8 @@ const run = async () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         name: "Outsider",
-        email: "outsider@example.com",
-        password: "password",
+        email: `outsider_${Date.now()}@example.com`,
+        password: "Password1",
         role: "member",
       }),
     });

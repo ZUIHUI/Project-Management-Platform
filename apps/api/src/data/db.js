@@ -1,6 +1,5 @@
-// Database service - now uses Prisma with SQLite
 import { prisma } from './prismaDB.ts';
-import { idFactory } from './inMemoryDB.js'; // Keep idFactory for now
+import { randomUUID } from 'crypto';
 
 export const db = prisma;
-export { idFactory };
+export const idFactory = (prefix) => `${prefix}-${randomUUID()}`;

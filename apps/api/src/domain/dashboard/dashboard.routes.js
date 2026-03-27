@@ -1,28 +1,38 @@
-import { Router } from "express";
-import { db } from "../../data/inMemoryDB.js";
-import { ok } from "../shared/http.js";
+import { Router } from 'express';
+import { db } from '../../data/db.js';
+import { ok } from '../shared/http.js';
 
 const router = Router();
 
-router.get("/dashboard", (req, res) => {
-  const openIssues = db.issues.filter((issue) => issue.statusId !== "done");
-  const overdueIssues = openIssues.filter(
-    (issue) => (issue.dueAt ?? issue.dueDate) && new Date(issue.dueAt ?? issue.dueDate).getTime() < Date.now(),
-  );
+router.get('/dashboard', async (req, res) => {
+  const [issues, statuses, totals] = await Promise.all([
+    db.issue.findMany(),
+    db.status.findMany(),
+    Promise.all([
+      db.project.count(),
+      db.issue.count(),
+      db.notification.count(),
+      db.comment.count(),
+      db.milestone.count(),
+      db.sprint.count(),
+    ]),
+  ]);
 
-  const statusBreakdown = db.statuses.map((status) => ({
+  const openIssues = issues.filter((issue) => issue.statusId !== 'done').map((i) => ({ ...i, dueAt: i.dueDate }));
+  const overdueIssues = openIssues.filter((issue) => issue.dueAt && new Date(issue.dueAt).getTime() < Date.now());
+  const statusBreakdown = statuses.map((status) => ({
     statusId: status.id,
-    count: db.issues.filter((issue) => issue.statusId === status.id).length,
+    count: issues.filter((issue) => issue.statusId === status.id).length,
   }));
 
   return ok(res, {
     totals: {
-      projects: db.projects.length,
-      issues: db.issues.length,
-      notifications: db.notifications.length,
-      comments: db.comments.length,
-      milestones: db.milestones.length,
-      sprints: db.sprints.length,
+      projects: totals[0],
+      issues: totals[1],
+      notifications: totals[2],
+      comments: totals[3],
+      milestones: totals[4],
+      sprints: totals[5],
     },
     statusBreakdown,
     openIssues,

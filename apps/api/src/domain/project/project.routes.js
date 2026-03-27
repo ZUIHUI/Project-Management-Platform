@@ -5,8 +5,8 @@ import { fail, ok } from "../shared/http.js";
 
 const router = Router();
 
-router.get("/projects", (req, res) => {
-  const result = projectService.list(req.query);
+router.get("/projects", async (req, res) => {
+  const result = await projectService.list(req.query);
   return ok(res, result.data, 200, {
     page: result.page,
     pageSize: result.pageSize,
@@ -15,8 +15,8 @@ router.get("/projects", (req, res) => {
   });
 });
 
-router.get("/projects/:projectId", requireProjectScope({ mode: "read" }), (req, res) => {
-  const project = projectService.get(req.params.projectId);
+router.get("/projects/:projectId", requireProjectScope({ mode: "read" }), async (req, res) => {
+  const project = await projectService.get(req.params.projectId);
   if (!project) {
     return fail(res, 404, "Project not found");
   }
@@ -24,8 +24,8 @@ router.get("/projects/:projectId", requireProjectScope({ mode: "read" }), (req, 
   return ok(res, project);
 });
 
-router.get("/projects/:projectId/timeline", requireProjectScope({ mode: "read" }), (req, res) => {
-  const result = projectService.timeline(req.params.projectId);
+router.get("/projects/:projectId/timeline", requireProjectScope({ mode: "read" }), async (req, res) => {
+  const result = await projectService.timeline(req.params.projectId);
   if (result.error) {
     return fail(res, result.status ?? 404, result.error);
   }
@@ -35,13 +35,13 @@ router.get("/projects/:projectId/timeline", requireProjectScope({ mode: "read" }
   });
 });
 
-router.post("/projects", requireRole("project_admin"), (req, res) => {
+router.post("/projects", requireRole("project_admin"), async (req, res) => {
   const { key, name } = req.body;
   if (!key || !name) {
     return fail(res, 422, "key and name are required");
   }
 
-  const result = projectService.create(req.body);
+  const result = await projectService.create(req.body);
   if (result.error) {
     return fail(res, result.status ?? 422, result.error);
   }
@@ -49,8 +49,8 @@ router.post("/projects", requireRole("project_admin"), (req, res) => {
   return ok(res, result.project, 201);
 });
 
-router.put("/projects/:projectId", requireRole("project_admin"), requireProjectScope({ mode: "admin" }), (req, res) => {
-  const result = projectService.update(req.params.projectId, req.body);
+router.put("/projects/:projectId", requireRole("project_admin"), requireProjectScope({ mode: "admin" }), async (req, res) => {
+  const result = await projectService.update(req.params.projectId, req.body);
   if (result.error) {
     return fail(res, result.status ?? 422, result.error);
   }
@@ -58,8 +58,8 @@ router.put("/projects/:projectId", requireRole("project_admin"), requireProjectS
   return ok(res, result.project);
 });
 
-router.post("/projects/:projectId/archive", requireRole("project_admin"), requireProjectScope({ mode: "admin" }), (req, res) => {
-  const result = projectService.archive(req.params.projectId);
+router.post("/projects/:projectId/archive", requireRole("project_admin"), requireProjectScope({ mode: "admin" }), async (req, res) => {
+  const result = await projectService.archive(req.params.projectId);
   if (result.error) {
     return fail(res, result.status ?? 422, result.error);
   }
@@ -67,8 +67,8 @@ router.post("/projects/:projectId/archive", requireRole("project_admin"), requir
   return ok(res, result.project);
 });
 
-router.delete("/projects/:projectId", requireRole("project_admin"), requireProjectScope({ mode: "admin" }), (req, res) => {
-  const result = projectService.remove(req.params.projectId);
+router.delete("/projects/:projectId", requireRole("project_admin"), requireProjectScope({ mode: "admin" }), async (req, res) => {
+  const result = await projectService.remove(req.params.projectId);
   if (result.error) {
     return fail(res, result.status ?? 422, result.error);
   }
@@ -76,13 +76,13 @@ router.delete("/projects/:projectId", requireRole("project_admin"), requireProje
   return ok(res, result.project);
 });
 
-router.post("/projects/:projectId/members", requireRole("project_admin"), requireProjectScope({ mode: "admin" }), (req, res) => {
+router.post("/projects/:projectId/members", requireRole("project_admin"), requireProjectScope({ mode: "admin" }), async (req, res) => {
   const { userId, role } = req.body;
   if (!userId || !role) {
     return fail(res, 422, "userId and role are required");
   }
 
-  const result = projectService.addMember(req.params.projectId, userId, role);
+  const result = await projectService.addMember(req.params.projectId, userId, role);
   if (result.error) {
     return fail(res, result.status ?? 422, result.error);
   }
@@ -90,12 +90,12 @@ router.post("/projects/:projectId/members", requireRole("project_admin"), requir
   return ok(res, result.member, 201);
 });
 
-router.post("/projects/:projectId/milestones", requireRole("member"), requireProjectScope({ mode: "write" }), (req, res) => {
+router.post("/projects/:projectId/milestones", requireRole("member"), requireProjectScope({ mode: "write" }), async (req, res) => {
   if (!req.body.name) {
     return fail(res, 422, "name is required");
   }
 
-  const result = projectService.createMilestone(req.params.projectId, req.body);
+  const result = await projectService.createMilestone(req.params.projectId, req.body);
   if (result.error) {
     return fail(res, result.status ?? 422, result.error);
   }
@@ -103,12 +103,12 @@ router.post("/projects/:projectId/milestones", requireRole("member"), requirePro
   return ok(res, result.milestone, 201);
 });
 
-router.post("/projects/:projectId/sprints", requireRole("member"), requireProjectScope({ mode: "write" }), (req, res) => {
+router.post("/projects/:projectId/sprints", requireRole("member"), requireProjectScope({ mode: "write" }), async (req, res) => {
   if (!req.body.name) {
     return fail(res, 422, "name is required");
   }
 
-  const result = projectService.createSprint(req.params.projectId, req.body);
+  const result = await projectService.createSprint(req.params.projectId, req.body);
   if (result.error) {
     return fail(res, result.status ?? 422, result.error);
   }

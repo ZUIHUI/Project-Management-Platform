@@ -1,49 +1,39 @@
-import { Router } from "express";
-import { db, idFactory, persistDb } from "../../data/inMemoryDB.js";
-import { ok, fail } from "../shared/http.js";
+import { Router } from 'express';
+import { db, idFactory } from '../../data/db.js';
+import { ok, fail } from '../shared/http.js';
 
 const router = Router();
 
-router.get("/notifications", (req, res) => {
+router.get('/notifications', async (req, res) => {
   const { userId } = req.query;
-  const data = userId
-    ? db.notifications.filter((notification) => notification.userId === userId)
-    : db.notifications;
-
-  return ok(res, data);
+  const data = await db.notification.findMany({ where: userId ? { userId: `${userId}` } : undefined, orderBy: { createdAt: 'desc' } });
+  return ok(res, data.map((n) => ({ ...n, payload: n.message })));
 });
 
-router.post("/notifications", (req, res) => {
+router.post('/notifications', async (req, res) => {
   const { userId, type, message, payload } = req.body;
-  if (!message && !payload) {
-    return fail(res, 422, "message or payload is required");
-  }
+  if (!message && !payload) return fail(res, 422, 'message or payload is required');
+  if (!userId) return fail(res, 422, 'userId is required');
 
-  const notification = {
-    id: idFactory("noti"),
-    userId: userId ?? null,
-    type: type ?? "system",
-    message: message ?? null,
-    payload: payload ?? null,
-    read: false,
-    createdAt: new Date().toISOString(),
-  };
-  db.notifications.push(notification);
-  persistDb();
+  const notification = await db.notification.create({
+    data: {
+      id: idFactory('noti'),
+      userId,
+      type: type ?? 'system',
+      message: message ?? JSON.stringify(payload),
+      read: false,
+    },
+  });
 
-  return ok(res, notification, 201);
+  return ok(res, { ...notification, payload: notification.message }, 201);
 });
 
-router.patch("/notifications/:notificationId/read", (req, res) => {
-  const notification = db.notifications.find((item) => item.id === req.params.notificationId);
-  if (!notification) {
-    return fail(res, 404, "Notification not found");
-  }
+router.patch('/notifications/:notificationId/read', async (req, res) => {
+  const notification = await db.notification.findUnique({ where: { id: req.params.notificationId } });
+  if (!notification) return fail(res, 404, 'Notification not found');
 
-  notification.read = true;
-  notification.readAt = new Date().toISOString();
-  persistDb();
-  return ok(res, notification);
+  const updated = await db.notification.update({ where: { id: req.params.notificationId }, data: { read: true } });
+  return ok(res, { ...updated, payload: updated.message });
 });
 
 export default router;
