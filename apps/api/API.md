@@ -224,6 +224,7 @@ Authorization: Bearer <accessToken>
 | PATCH | `/issues/{issueId}/status` | `member` + scope: write | 狀態遷移（`statusId` 必填） |
 | GET | `/issues/{issueId}/comments` | scope: read | 留言列表 |
 | POST | `/issues/{issueId}/comments` | `member` + scope: write | 新增留言 |
+| GET | `/issues/{issueId}/activity` | scope: read(issue source) | 單一 Issue 活動紀錄（支援 `limit`） |
 | GET | `/activity-logs` | `member` | 活動紀錄 |
 | GET | `/tasks` | authenticated | **Deprecated**；回傳 `Deprecation`/`Sunset` header |
 
@@ -301,4 +302,3 @@ Authorization: Bearer <accessToken>
   2. 統一錯誤格式（含 middleware 與 domain service）
   3. 補齊 OpenAPI 與實際行為的自動比對（contract test gate）
   4. 增加整合測試（auth, project scope, workflow transition）
-

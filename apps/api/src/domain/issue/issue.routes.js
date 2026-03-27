@@ -84,6 +84,15 @@ router.post("/issues/:issueId/comments", requireRole("member"), requireProjectSc
 
 router.get("/activity-logs", requireRole("member"), async (req, res) => ok(res, await issueService.activityLogs()));
 
+router.get("/issues/:issueId/activity", requireProjectScope({ mode: "read", source: "issue" }), async (req, res) => {
+  const result = await issueService.issueActivity(req.params.issueId, req.query);
+  if (result.error) {
+    return fail(res, result.status ?? 404, result.error);
+  }
+
+  return ok(res, result.data, 200, { limit: result.limit });
+});
+
 router.get("/tasks", async (req, res) => {
   res.set("Deprecation", "true");
   res.set("Sunset", "2026-12-31");
