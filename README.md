@@ -21,6 +21,26 @@ This repository now follows a monorepo structure with separate frontend and back
 ### Build
 Use `npm run build:web` to create a production build of the frontend.
 
+### Deployment / 部署
+
+This project supports multiple deployment options. See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
+
+**Quick Deploy Options:**
+
+```bash
+# Vercel + Neon PostgreSQL (Recommended for personal projects)
+./deploy.sh vercel
+
+# Complete setup guide: VERCEL-NEON-DEPLOY.md
+```
+
+**Supported Platforms:**
+- ✅ Vercel (Frontend + API)
+- ✅ Railway (Full-stack)
+- ✅ Render (Web services)
+- ✅ Docker (Containerized)
+- ✅ VPS (Manual setup)
+
 ### GitHub Pages Demo
 The web app can be deployed to GitHub Pages via `.github/workflows/deploy-github-pages.yml`.
 - Expected URL format: `https://<github-username>.github.io/Project-Management-Platform/`

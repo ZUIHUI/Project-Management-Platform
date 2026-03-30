@@ -14,7 +14,7 @@ interface ImportMeta {
 const isDemoMode = import.meta.env.VITE_DEMO_MODE === "true";
 
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1",
+  baseURL: import.meta.env.DEV ? "/api/v1" : (import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1"),
   headers: {
     "Content-Type": "application/json",
   },

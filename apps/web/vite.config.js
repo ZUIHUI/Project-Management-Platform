@@ -9,5 +9,13 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     base: isPages ? `/${repo}/` : "/",
+    server: {
+      proxy: {
+        "/api": {
+          target: "http://localhost:3000",
+          changeOrigin: true,
+        },
+      },
+    },
   };
 });

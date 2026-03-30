@@ -141,14 +141,20 @@ export default function Tasks({ viewMode = "list" }) {
     }
 
     try {
-      await issueService.createIssue(projectId, {
+      const response = await issueService.createIssue(projectId, {
         title: form.title.trim(),
         description: form.description.trim() || undefined,
         priority: form.priority,
         reporterId: "user-pm",
       });
+      
+      // 立即更新本地狀態，而不是重新載入
+      const newIssue = response.data?.data;
+      if (newIssue) {
+        setIssues(prev => [...prev, newIssue]);
+      }
+      
       setForm({ title: "", description: "", priority: "medium" });
-      await loadIssues(projectId);
     } catch (err) {
       setError(getErrorMessage(err, "建立 Issue 失敗"));
     }
@@ -163,6 +169,14 @@ export default function Tasks({ viewMode = "list" }) {
 
     try {
       await issueService.transitionIssueStatus(issue.id, statuses[nextIndex].id);
+      
+      // 立即更新本地狀態
+      setIssues(prev => prev.map(item => 
+        item.id === issue.id 
+          ? { ...item, statusId: statuses[nextIndex].id, updatedAt: new Date().toISOString() }
+          : item
+      ));
+      
       const currentUser = authService.getCurrentUser();
       if (currentUser?.id) {
         await notificationsService.createNotification({
@@ -171,9 +185,10 @@ export default function Tasks({ viewMode = "list" }) {
           message: `Issue #${issue.number} 已由 ${statuses[index].name} 轉為 ${statuses[nextIndex].name}`,
         });
       }
-      await loadIssues(projectId);
     } catch (err) {
       setError(getErrorMessage(err, "狀態更新失敗，請確認流程轉換規則"));
+      // 如果失敗，重新載入數據以恢復正確狀態
+      await loadIssues(projectId);
     }
   };
 
@@ -181,9 +196,19 @@ export default function Tasks({ viewMode = "list" }) {
     try {
       setDetailSaving(true);
       await issueService.assignIssue(issueId, assigneeId || null);
-      await Promise.all([loadIssues(projectId), loadIssueDetails(issueId)]);
+      
+      // 立即更新本地狀態
+      setIssues(prev => prev.map(item => 
+        item.id === issueId 
+          ? { ...item, assigneeId: assigneeId || null, updatedAt: new Date().toISOString() }
+          : item
+      ));
+      
+      await loadIssueDetails(issueId);
     } catch (err) {
       setError(getErrorMessage(err, "指派失敗"));
+      // 如果失敗，重新載入數據以恢復正確狀態
+      await Promise.all([loadIssues(projectId), loadIssueDetails(issueId)]);
     } finally {
       setDetailSaving(false);
     }

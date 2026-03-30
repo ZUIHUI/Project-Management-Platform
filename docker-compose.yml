@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: project_management
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: ../../Dockerfile
+    environment:
+      DATABASE_URL: postgresql://postgres:password@db:5432/project_management
+      JWT_SECRET: your-super-secret-jwt-key
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    command: sh -c "npx prisma db push && npm run db:seed && npm run dev"
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: ../../Dockerfile.frontend
+    environment:
+      VITE_API_URL: http://localhost:3000/api/v1
+      VITE_DEMO_MODE: false
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
