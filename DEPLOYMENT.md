@@ -45,6 +45,15 @@ vercel env add JWT_SECRET
 - `DATABASE_URL`: PostgreSQL 連接字符串
 - `JWT_SECRET`: JWT 密鑰（至少 256 位）
 
+**PR 合併後自動部署到 Vercel（GitHub Actions）**：
+
+倉庫已提供 `.github/workflows/deploy-vercel-on-merge.yml`，當 PR 被合併到 `main` 或 `master` 時會自動觸發 production 部署。
+
+請先在 GitHub Repository Secrets 設定：
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`
+
 ### 2. Railway 部署（全功能）
 
 **優點**：一站式解決方案，內建數據庫
