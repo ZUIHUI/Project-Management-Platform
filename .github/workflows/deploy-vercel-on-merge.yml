@@ -1,15 +1,13 @@
-name: Deploy to Vercel on PR merge
+name: Deploy to Vercel on main push
 
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches:
       - main
       - master
 
 jobs:
   deploy:
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -26,6 +24,10 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "Missing one or more required Vercel secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID"
+            exit 1
+          fi
           npm install --global vercel@latest
           vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
           vercel build --prod --token="$VERCEL_TOKEN"
