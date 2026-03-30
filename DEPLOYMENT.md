@@ -50,7 +50,9 @@ vercel env add JWT_SECRET
 倉庫已提供 `.github/workflows/deploy-vercel-on-merge.yml`，當 PR 被合併到 `main` 或 `master` 時會自動觸發 production 部署。
 
 請先在 GitHub Repository Secrets 設定：
-- `VERCEL_DEPLOY_HOOK_URL`（可在 Vercel Project Settings → Git Integration → Deploy Hooks 建立）
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`
 
 ### 2. Railway 部署（全功能）
 
