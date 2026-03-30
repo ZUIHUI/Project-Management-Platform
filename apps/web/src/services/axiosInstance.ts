@@ -13,8 +13,18 @@ interface ImportMeta {
 
 const isDemoMode = import.meta.env.VITE_DEMO_MODE === "true";
 
+const resolveApiBaseUrl = () => {
+  const configured = import.meta.env.VITE_API_URL?.trim();
+
+  if (!configured) {
+    return "/api/v1";
+  }
+
+  return configured.replace(/\/$/, "");
+};
+
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.DEV ? "/api/v1" : (import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1"),
+  baseURL: resolveApiBaseUrl(),
   headers: {
     "Content-Type": "application/json",
   },
