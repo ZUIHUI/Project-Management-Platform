@@ -49,12 +49,13 @@ const run = async () => {
     assert.equal(projectAdminMember.email, 'pm@example.com');
 
     // project scope integration: outsider must be forbidden
+    const outsiderEmail = `scope-outsider_${randomUUID()}@example.com`;
     const registerRes = await fetch(`${baseUrl}/register`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         name: 'Scope Outsider',
-        email: `scope-outsider_${randomUUID()}@example.com`,
+        email: outsiderEmail,
         password: 'Password1',
         role: 'owner',
       }),
@@ -237,7 +238,7 @@ const run = async () => {
     assert.equal(addDisposableMemberRes.status, 201);
     const disposableMember = (await addDisposableMemberRes.json()).data;
     assert.equal(disposableMember.name, outsider.user.name);
-    assert.equal(disposableMember.email, outsider.user.email);
+    assert.equal(disposableMember.email, outsiderEmail);
 
     const disposableMilestoneRes = await fetch(`${baseUrl}/projects/${disposableProject.id}/milestones`, {
       method: 'POST',
