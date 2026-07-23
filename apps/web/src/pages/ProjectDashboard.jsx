@@ -1,206 +1,108 @@
-import { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import BoardView from '../components/BoardView';
-import CalendarView from '../components/CalendarView';
-import GanttView from '../components/GanttView';
-import TaskDetailPanel from '../components/TaskDetailPanel';
+import { useState } from "react";
+import { ArrowLeft, FolderX } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
+import TaskDetailPanel from "../components/TaskDetailPanel";
+import { Alert, Badge, Button, Card, EmptyState, LoadingState, PageHeader } from "../components/ui";
+import { buttonClass } from "../components/ui/styles";
+import { useProjectViewData } from "../features/issue/useProjectViewData";
+import { useProjectTaskSelection } from "../features/issue/useProjectTaskSelection";
+import { canAccessProject } from "../features/project";
+import ProjectViewTabs from "../features/project/components/ProjectViewTabs";
+import ProjectWorkspaceContent from "../features/project/components/ProjectWorkspaceContent";
 
 export default function ProjectDashboard() {
   const { projectId } = useParams();
-  const [selectedView, setSelectedView] = useState('board');
-  const [selectedTask, setSelectedTask] = useState(null);
-  const [tasks, setTasks] = useState([
-    {
-      id: '1',
-      number: '1',
-      title: '設計首頁 UI',
-      description: '為新平台設計首頁用戶界面',
-      status: 'In Progress',
-      priority: 'high',
-      assignee: 'Alice',
-      dueDate: new Date(2026, 3, 15),
-      createdAt: new Date(2026, 2, 1),
-      updatedAt: new Date(2026, 3, 5),
-      tags: ['design', 'ui'],
-      comments: [
-        {
-          id: 'c1',
-          author: 'Bob',
-          body: '看起來不錯，可以加一些動畫效果嗎？',
-          createdAt: new Date(2026, 3, 4),
-        },
-      ],
-    },
-    {
-      id: '2',
-      number: '2',
-      title: 'API 文件撰寫',
-      description: '撰寫完整的 API 文件',
-      status: 'Todo',
-      priority: 'medium',
-      assignee: 'Charlie',
-      dueDate: new Date(2026, 3, 20),
-      createdAt: new Date(2026, 2, 5),
-      updatedAt: new Date(2026, 3, 3),
-      tags: ['documentation', 'api'],
-    },
-    {
-      id: '3',
-      number: '3',
-      title: '數據庫優化',
-      description: '優化數據庫查詢效能',
-      status: 'Done',
-      priority: 'high',
-      assignee: 'David',
-      dueDate: new Date(2026, 3, 10),
-      createdAt: new Date(2026, 2, 10),
-      updatedAt: new Date(2026, 3, 8),
-      tags: ['performance', 'backend'],
-    },
-    {
-      id: '4',
-      number: '4',
-      title: '前端測試套件建立',
-      description: '為前端建立自動化測試',
-      status: 'In Progress',
-      priority: 'medium',
-      assignee: 'Eve',
-      dueDate: new Date(2026, 3, 25),
-      createdAt: new Date(2026, 2, 15),
-      updatedAt: new Date(2026, 3, 6),
-      tags: ['testing', 'frontend'],
-    },
-    {
-      id: '5',
-      number: '5',
-      title: '使用者驗證系統',
-      description: '實現 JWT 認證和授權',
-      status: 'Todo',
-      priority: 'high',
-      assignee: null,
-      dueDate: new Date(2026, 4, 1),
-      createdAt: new Date(2026, 2, 20),
-      updatedAt: new Date(2026, 3, 2),
-      tags: ['security', 'auth'],
-    },
-  ]);
-
-  const team = [
-    { id: 'alice', name: 'Alice' },
-    { id: 'bob', name: 'Bob' },
-    { id: 'charlie', name: 'Charlie' },
-    { id: 'david', name: 'David' },
-    { id: 'eve', name: 'Eve' },
-  ];
-
-  const handleTaskUpdate = (updatedTask) => {
-    setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
-    setSelectedTask(null);
-  };
-
-  const handleStatusChange = (taskId, newStatus) => {
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
-  };
-
-  const statuses = ['Todo', 'In Progress', 'Done'];
+  const [selectedView, setSelectedView] = useState("board");
+  const view = useProjectViewData(projectId);
+  const selection = useProjectTaskSelection(view.tasks, view.selectedProjectId);
+  const projectArchived = view.selectedProject?.status === "archived";
+  const canEditProject = canAccessProject(view.selectedProject, "write") && !projectArchived;
+  const projectTitle = view.selectedProject?.name ?? (projectId ? `專案 ${projectId}` : "專案工作區");
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">專案詳情 - {projectId}</h1>
-          <p className="text-sm text-gray-600 mt-1">使用不同視圖管理任務</p>
-        </div>
-      </div>
-
-      {/* View Selector */}
-      <div className="flex gap-2 bg-gray-100 p-2 rounded-lg w-fit">
-        {[
-          { id: 'board', label: '看板' },
-          { id: 'calendar', label: '日曆' },
-          { id: 'gantt', label: 'Gantt' },
-          { id: 'list', label: '清單' },
-        ].map((view) => (
-          <button
-            key={view.id}
-            onClick={() => setSelectedView(view.id)}
-            className={`px-4 py-2 rounded transition-colors ${
-              selectedView === view.id
-                ? 'bg-blue-500 text-white'
-                : 'bg-transparent text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {view.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Views */}
-      {selectedView === 'board' && (
-        <BoardView
-          projectId={projectId}
-          tasks={tasks}
-          statuses={statuses}
-          onTaskClick={setSelectedTask}
-          onStatusChange={handleStatusChange}
-        />
-      )}
-
-      {selectedView === 'calendar' && (
-        <CalendarView
-          tasks={tasks}
-          onTaskClick={setSelectedTask}
-          onDateSelect={(date) => console.log('Selected date:', date)}
-        />
-      )}
-
-      {selectedView === 'gantt' && (
-        <GanttView
-          tasks={tasks}
-          projectStartDate={new Date(2026, 1, 1)}
-          projectEndDate={new Date(2026, 4, 31)}
-          onTaskClick={setSelectedTask}
-        />
-      )}
-
-      {selectedView === 'list' && (
-        <div className="bg-white border rounded-lg p-6">
-          <h3 className="text-xl font-semibold mb-4">任務清單</h3>
-          <div className="space-y-2">
-            {tasks.map((task) => (
-              <div
-                key={task.id}
-                onClick={() => setSelectedTask(task)}
-                className="flex items-center gap-4 p-3 border rounded-lg cursor-pointer hover:bg-blue-50 transition-colors"
-              >
-                <div className="w-8 h-8 rounded-full bg-gray-200" />
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-800">#{task.number} {task.title}</p>
-                  <p className="text-sm text-gray-500">{task.assignee || '未指派'}</p>
-                </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                  task.status === 'Done' ? 'bg-green-100 text-green-800' :
-                  task.status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
-                  {task.status}
-                </span>
-              </div>
-            ))}
+      <PageHeader
+        eyebrow={view.selectedProject?.key ?? "專案工作區"}
+        title={projectTitle}
+        description={view.selectedProject?.description || "集中檢視 Issue、交付時程與工作狀態。"}
+        actions={(
+          <>
+            <Link to="/projects" className={buttonClass({ variant: "secondary" })}>
+              <ArrowLeft size={17} aria-hidden="true" />所有專案
+            </Link>
+            {canEditProject ? (
+              <Link to={`/projects/${view.selectedProject.id}/issues`} className={buttonClass({ variant: "primary" })}>
+                管理 Issue
+              </Link>
+            ) : null}
+          </>
+        )}
+      >
+        {view.selectedProject ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Badge tone={projectArchived ? "neutral" : "success"}>
+              {projectArchived ? "已封存" : "進行中"}
+            </Badge>
+            <Badge>{view.loading ? "Issue 載入中" : `${view.tasks.length} 個 Issue`}</Badge>
+            <Badge>{view.team.length} 位成員</Badge>
           </div>
-        </div>
-      )}
+        ) : null}
+      </PageHeader>
 
-      {/* Task Detail Panel */}
-      {selectedTask && (
-        <TaskDetailPanel
-          task={selectedTask}
-          onClose={() => setSelectedTask(null)}
-          onUpdate={handleTaskUpdate}
-          team={team}
-        />
-      )}
+      {view.error ? (
+        <Alert tone="error" title="無法載入專案工作區">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span>{view.error}</span>
+            <Button variant="secondary" className="w-full shrink-0 sm:w-auto" onClick={view.retry}>
+              重新載入
+            </Button>
+          </div>
+        </Alert>
+      ) : null}
+
+      {view.selectedProject && !canEditProject ? (
+        <Alert tone="info" title="唯讀模式">
+          {projectArchived
+            ? "此專案已封存，可保留檢視但不再接受交付內容更新。"
+            : "你可以檢視專案、Issue 與交付日期；更新內容需要此專案的協作者或專案管理員角色。"}
+        </Alert>
+      ) : null}
+
+      {view.loading ? <Card><LoadingState label="載入專案工作中…" /></Card> : null}
+
+      {!view.loading && !view.selectedProject ? (
+        <Card>
+          <EmptyState
+            icon={FolderX}
+            title="找不到可存取的專案"
+            description="專案可能不存在，或目前帳號尚未取得檢視權限。"
+            action={<Button as={Link} to="/projects" variant="secondary">返回所有專案</Button>}
+          />
+        </Card>
+      ) : null}
+
+      {!view.loading && view.selectedProject ? (
+        <>
+          <ProjectViewTabs value={selectedView} onChange={setSelectedView} />
+          <ProjectWorkspaceContent
+            selectedView={selectedView}
+            project={view.selectedProject}
+            tasks={view.tasks}
+            statusOptions={view.statusOptions}
+            canEdit={canEditProject}
+            onSelectTask={selection.selectTask}
+            onTransitionTask={view.transitionTask}
+          />
+        </>
+      ) : null}
+
+      <TaskDetailPanel
+        task={selection.selectedTask}
+        team={view.team}
+        statusOptions={view.statusOptions}
+        onClose={selection.clearSelection}
+        onUpdate={canEditProject ? view.updateTask : undefined}
+      />
     </div>
   );
 }

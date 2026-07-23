@@ -1,74 +1,70 @@
 import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
-import Dashboard from "./pages/Dashboard";
-import Projects from "./pages/Projects";
+import { lazy } from "react";
 import MainLayout from "./components/layout/MainLayout";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Notifications from "./pages/Notifications";
-import Settings from "./pages/Settings";
-import Home from "./pages/Home";
 import RequireAuth from "./components/auth/RequireAuth";
-import Tasks from "./pages/Tasks";
-import MilestoneManagement from "./components/MilestoneManagement";
-import TagsManagement from "./components/TagsManagement";
-import SprintManagement from "./pages/SprintManagement";
-import TeamManagement from "./pages/TeamManagement";
-import ActivityLogView from "./pages/ActivityLogView";
-import InsightsPage from "./pages/InsightsPage";
-import ProjectDashboard from "./pages/ProjectDashboard";
-import BoardPage from "./pages/BoardPage";
-import CalendarPage from "./pages/CalendarPage";
-import TimelinePage from "./pages/TimelinePage";
-import WorkloadPage from "./pages/WorkloadPage";
+import GuestOnly from "./components/auth/GuestOnly";
+import { WORKSPACE_ROLE_REQUIREMENTS } from "./components/layout/workspaceAccess.js";
+
+const Home = lazy(() => import("./pages/Home"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Projects = lazy(() => import("./pages/Projects"));
+const ProjectDashboard = lazy(() => import("./pages/ProjectDashboard"));
+const Tasks = lazy(() => import("./pages/Tasks"));
+const BoardPage = lazy(() => import("./pages/BoardPage"));
+const CalendarPage = lazy(() => import("./pages/CalendarPage"));
+const TimelinePage = lazy(() => import("./pages/TimelinePage"));
+const InsightsPageWrapper = lazy(() => import("./pages/InsightsPageWrapper"));
+const WorkloadPage = lazy(() => import("./pages/WorkloadPage"));
+const TeamManagement = lazy(() => import("./pages/TeamManagement"));
+const ActivityLogView = lazy(() => import("./pages/ActivityLogView"));
+const SprintManagement = lazy(() => import("./pages/SprintManagement"));
+const MilestoneManagement = lazy(() => import("./pages/MilestoneManagement"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const Settings = lazy(() => import("./pages/Settings"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 export default function App() {
   return (
     <HashRouter>
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/" element={<MainLayout />}>
-          <Route
-            index
-            element={
-              <RequireAuth>
-                <Navigate to="/home" replace />
-              </RequireAuth>
-            }
-          />
+        <Route path="/login" element={<GuestOnly><Login /></GuestOnly>} />
+        <Route path="/register" element={<GuestOnly><Register /></GuestOnly>} />
+        <Route path="/" element={<RequireAuth><MainLayout /></RequireAuth>}>
+          <Route index element={<Navigate to="/home" replace />} />
           {/* Home and Main Navigation */}
-          <Route path="home" element={<RequireAuth><Home /></RequireAuth>} />
+          <Route path="home" element={<Home />} />
           
           {/* Dashboard */}
-          <Route path="dashboard" element={<RequireAuth minRole="member"><Dashboard /></RequireAuth>} />
+          <Route path="dashboard" element={<RequireAuth minRole={WORKSPACE_ROLE_REQUIREMENTS.dashboard}><Dashboard /></RequireAuth>} />
           
           {/* Global Views */}
-          <Route path="board" element={<RequireAuth minRole="member"><BoardPage /></RequireAuth>} />
-          <Route path="calendar" element={<RequireAuth minRole="member"><CalendarPage /></RequireAuth>} />
-          <Route path="timeline" element={<RequireAuth minRole="member"><TimelinePage /></RequireAuth>} />
-          <Route path="insights" element={<RequireAuth minRole="member"><InsightsPage /></RequireAuth>} />
-          <Route path="workload" element={<RequireAuth minRole="member"><WorkloadPage /></RequireAuth>} />
+          <Route path="board" element={<RequireAuth minRole={WORKSPACE_ROLE_REQUIREMENTS.board}><BoardPage /></RequireAuth>} />
+          <Route path="calendar" element={<RequireAuth minRole={WORKSPACE_ROLE_REQUIREMENTS.calendar}><CalendarPage /></RequireAuth>} />
+          <Route path="timeline" element={<RequireAuth minRole={WORKSPACE_ROLE_REQUIREMENTS.timeline}><TimelinePage /></RequireAuth>} />
+          <Route path="insights" element={<RequireAuth minRole={WORKSPACE_ROLE_REQUIREMENTS.insights}><InsightsPageWrapper /></RequireAuth>} />
+          <Route path="workload" element={<RequireAuth minRole={WORKSPACE_ROLE_REQUIREMENTS.workload}><WorkloadPage /></RequireAuth>} />
           
           {/* Team and Activity Management */}
-          <Route path="team" element={<RequireAuth minRole="member"><TeamManagement /></RequireAuth>} />
-          <Route path="activity" element={<RequireAuth minRole="member"><ActivityLogView /></RequireAuth>} />
-          <Route path="tags" element={<RequireAuth minRole="member"><TagsManagement /></RequireAuth>} />
+          <Route path="team" element={<RequireAuth minRole={WORKSPACE_ROLE_REQUIREMENTS.team}><TeamManagement /></RequireAuth>} />
+          <Route path="activity" element={<RequireAuth minRole={WORKSPACE_ROLE_REQUIREMENTS.activity}><ActivityLogView /></RequireAuth>} />
           
           {/* Projects */}
-          <Route path="projects" element={<RequireAuth><Projects /></RequireAuth>} />
-          <Route path="projects/:projectId" element={<RequireAuth><ProjectDashboard /></RequireAuth>} />
+          <Route path="projects" element={<Projects />} />
+          <Route path="projects/:projectId" element={<ProjectDashboard />} />
           
           {/* Project-Specific Views */}
-          <Route path="projects/:projectId/issues" element={<RequireAuth><Tasks viewMode="list" /></RequireAuth>} />
-          <Route path="projects/:projectId/board" element={<RequireAuth><Tasks viewMode="board" /></RequireAuth>} />
-          <Route path="projects/:projectId/sprint" element={<RequireAuth minRole="member"><SprintManagement /></RequireAuth>} />
-          <Route path="projects/:projectId/milestone" element={<RequireAuth minRole="member"><MilestoneManagement /></RequireAuth>} />
+          <Route path="projects/:projectId/issues" element={<RequireAuth minRole={WORKSPACE_ROLE_REQUIREMENTS.projectIssues}><Tasks viewMode="list" /></RequireAuth>} />
+          <Route path="projects/:projectId/board" element={<RequireAuth minRole={WORKSPACE_ROLE_REQUIREMENTS.projectBoard}><Tasks viewMode="board" /></RequireAuth>} />
+          <Route path="projects/:projectId/sprint" element={<RequireAuth minRole={WORKSPACE_ROLE_REQUIREMENTS.projectSprint}><SprintManagement /></RequireAuth>} />
+          <Route path="projects/:projectId/milestone" element={<RequireAuth minRole={WORKSPACE_ROLE_REQUIREMENTS.projectMilestone}><MilestoneManagement /></RequireAuth>} />
           
           {/* Other Pages */}
-          <Route path="notifications" element={<RequireAuth minRole="member"><Notifications /></RequireAuth>} />
-          <Route path="settings" element={<RequireAuth><Settings /></RequireAuth>} />
+          <Route path="notifications" element={<RequireAuth minRole={WORKSPACE_ROLE_REQUIREMENTS.notifications}><Notifications /></RequireAuth>} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
-        <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
     </HashRouter>
   );

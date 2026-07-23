@@ -1,0 +1,18 @@
+export const WORKSPACE_ROLE_REQUIREMENTS = Object.freeze({
+  home: "viewer",
+  projects: "viewer",
+  dashboard: "viewer",
+  board: "viewer",
+  calendar: "viewer",
+  timeline: "viewer",
+  insights: "viewer",
+  workload: "viewer",
+  team: "viewer",
+  activity: "member",
+  notifications: "viewer",
+  settings: "viewer",
+  projectIssues: "viewer",
+  projectBoard: "viewer",
+  projectSprint: "viewer",
+  projectMilestone: "viewer",
+});

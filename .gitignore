@@ -29,4 +29,9 @@ dist-ssr
 apps/web/.yarn/
 apps/web/.yarnrc.yml
 .vercel
+.local/
+.env
 .env*.local
+*.db
+*.db-journal
+apps/api/src/data/runtime-db.json

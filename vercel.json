@@ -1,8 +1,9 @@
 {
   "version": 2,
+  "installCommand": "npm ci && npm --workspace apps/api run db:generate",
   "builds": [
     {
-      "src": "api/index.js",
+      "src": "api/index.ts",
       "use": "@vercel/node"
     },
     {
@@ -16,7 +17,7 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/index.js"
+      "dest": "/api/index.ts"
     },
     {
       "handle": "filesystem"
@@ -30,7 +31,7 @@
     "NODE_ENV": "production"
   },
   "functions": {
-    "api/index.js": {
+    "api/index.ts": {
       "maxDuration": 30
     }
   }

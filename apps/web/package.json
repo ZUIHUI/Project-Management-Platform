@@ -6,13 +6,18 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "generate:api": "node scripts/generate-api.mjs",
+    "check:api-generated": "node scripts/generate-api.mjs --check",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "test:auth": "node --test scripts/auth-transport.test.mjs scripts/credential-validation.test.mjs",
+    "test:ui-state": "node --test scripts/api-error-presentation.test.mjs scripts/issue-workspace-state.test.mjs scripts/project-workspace-state.test.mjs scripts/project-action-error-presentation.test.mjs scripts/workspace-access.test.mjs scripts/workspace-shell-state.test.mjs scripts/workstream-presentation.test.mjs scripts/workflow-presentation.test.mjs scripts/insight-workload-metrics.test.mjs",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "axios": "^1.9.0",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.511.0",
+    "openapi-fetch": "^0.17.0",
     "react": "^19.1.0",
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
@@ -35,6 +40,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
+    "openapi-typescript": "^7.13.0",
     "postcss": "^8.5.4",
     "tailwindcss": "^3.4.1",
     "vite": "^6.3.5"

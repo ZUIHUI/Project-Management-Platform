@@ -1,15 +1,19 @@
-import axiosInstance from "./axiosInstance";
+import { apiClient, apiRequest } from "../shared/api/client";
 
 export const notificationsService = {
-  fetchNotifications(userId?: string) {
-    return axiosInstance.get("/notifications", { params: userId ? { userId } : undefined });
+  fetchNotifications(_userId?: string) {
+    return apiRequest(apiClient.GET("/notifications"));
   },
 
   markAsRead(notificationId: string) {
-    return axiosInstance.patch(`/notifications/${notificationId}/read`);
+    return apiRequest(
+      apiClient.PATCH("/notifications/{notificationId}/read", {
+        params: { path: { notificationId } },
+      }),
+    );
   },
 
   createNotification(payload: { userId?: string; type?: string; message: string }) {
-    return axiosInstance.post("/notifications", payload);
+    return apiRequest(apiClient.POST("/notifications", { body: payload }));
   },
 };

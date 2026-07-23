@@ -1,41 +1,38 @@
-import { useState, useEffect } from 'react';
 import BoardView from '../components/BoardView';
+import ProjectScopeSelector from '../components/ProjectScopeSelector';
+import TaskDetailPanel from '../components/TaskDetailPanel';
+import { useProjectTaskSelection } from '../features/issue/useProjectTaskSelection';
+import { useProjectViewData } from '../features/issue/useProjectViewData';
+import ProjectScopedContent from '../features/project/components/ProjectScopedContent';
+import { PageHeader } from '../components/ui';
 
 export default function BoardPage() {
-  const [tasks, setTasks] = useState([
-    {
-      id: '1',
-      title: '設計首頁 UI',
-      status: 'In Progress',
-      priority: 'high',
-      assignee: 'Alice',
-      dueDate: new Date(),
-    },
-    {
-      id: '2',
-      title: 'API 開發',
-      status: 'Todo',
-      priority: 'medium',
-      assignee: 'Bob',
-      dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-    },
-  ]);
-
-  const statuses = ['Todo', 'In Progress', 'Done'];
-
-  const handleStatusChange = (taskId, newStatus) => {
-    setTasks(prev =>
-      prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t)
-    );
-  };
+  const view = useProjectViewData();
+  const selection = useProjectTaskSelection(view.tasks, view.selectedProjectId);
 
   return (
-    <BoardView
-      projectId="current"
-      tasks={tasks}
-      statuses={statuses}
-      onTaskClick={() => {}}
-      onStatusChange={handleStatusChange}
-    />
+    <div className="space-y-6">
+      <PageHeader eyebrow="交付規劃" title="跨專案看板" description="依專案切換工作範圍，拖曳或用狀態選單推進 Issue。" />
+      <ProjectScopeSelector
+        projects={view.projects}
+        value={view.selectedProjectId}
+        onChange={view.setSelectedProjectId}
+        loading={view.scopeLoading}
+        error={view.error}
+        onRetry={view.retry}
+        readOnlyMessage={!view.loading && view.selectedProject && !view.canWrite ? (view.selectedProject.status === "archived" ? "此專案已封存，工作看板保留供查閱。" : "你的專案角色可檢視工作看板，但不能移動或編輯工作項目。") : ""}
+      />
+      <ProjectScopedContent loading={view.loading} error={view.error} project={view.selectedProject} loadingLabel="載入工作看板…">
+        <BoardView
+          projectId={view.selectedProject?.name ?? view.selectedProjectId}
+          tasks={view.tasks}
+          statusOptions={view.statusOptions}
+          onTaskClick={(task) => selection.selectTask(task.id)}
+          onStatusChange={view.canWrite ? view.transitionTask : undefined}
+          showHeader={false}
+        />
+      </ProjectScopedContent>
+      <TaskDetailPanel task={selection.selectedTask} team={view.team} statusOptions={view.statusOptions} onClose={selection.clearSelection} onUpdate={view.canWrite ? view.updateTask : undefined} />
+    </div>
   );
 }

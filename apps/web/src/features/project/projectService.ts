@@ -1,50 +1,54 @@
-import axiosInstance from "../../services/axiosInstance";
+import { apiClient, apiRequest } from "../../shared/api/client";
+import type { components } from "../../shared/api/schema";
 
-export type CreateProjectPayload = {
-  key: string;
-  name: string;
-  description?: string;
-  ownerId?: string;
-};
+export type CreateProjectPayload = components["schemas"]["CreateProjectRequest"];
+type ProjectQuery = { q?: string; status?: string; page?: number; pageSize?: number };
 
 export const projectService = {
-  fetchProjects(query?: Record<string, string | number | undefined>) {
-    return axiosInstance.get("/projects", { params: query });
+  fetchProjects(query: ProjectQuery = {}) {
+    return apiRequest(apiClient.GET("/projects", { params: { query } }));
   },
 
   fetchProjectById(id: string) {
-    return axiosInstance.get(`/projects/${id}`);
+    return apiRequest(apiClient.GET("/projects/{projectId}", { params: { path: { projectId: id } } }));
   },
 
   fetchProjectTimeline(id: string) {
-    return axiosInstance.get(`/projects/${id}/timeline`);
+    return apiRequest(apiClient.GET("/projects/{projectId}/timeline", { params: { path: { projectId: id } } }));
   },
 
   createProject(data: CreateProjectPayload) {
-    return axiosInstance.post("/projects", data, {
-      headers: { "x-role": "project_admin" },
-    });
+    return apiRequest(apiClient.POST("/projects", { body: data }));
   },
 
   archiveProject(id: string) {
-    return axiosInstance.post(
-      `/projects/${id}/archive`,
-      {},
-      {
-        headers: { "x-role": "project_admin" },
-      },
+    return apiRequest(apiClient.POST("/projects/{projectId}/archive", { params: { path: { projectId: id } } }));
+  },
+
+  upsertProjectMember(projectId: string, data: { userId: string; role: "viewer" | "member" | "project_admin" }) {
+    return apiRequest(
+      apiClient.POST("/projects/{projectId}/members", {
+        params: { path: { projectId } },
+        body: data,
+      }),
     );
   },
 
   createMilestone(projectId: string, data: { name: string; dueAt?: string }) {
-    return axiosInstance.post(`/projects/${projectId}/milestones`, data, {
-      headers: { "x-role": "member" },
-    });
+    return apiRequest(
+      apiClient.POST("/projects/{projectId}/milestones", {
+        params: { path: { projectId } },
+        body: data,
+      }),
+    );
   },
 
-  createSprint(projectId: string, data: { name: string; goal?: string }) {
-    return axiosInstance.post(`/projects/${projectId}/sprints`, data, {
-      headers: { "x-role": "member" },
-    });
+  createSprint(projectId: string, data: { name: string; goal?: string; startAt?: string; endAt?: string | null }) {
+    return apiRequest(
+      apiClient.POST("/projects/{projectId}/sprints", {
+        params: { path: { projectId } },
+        body: data,
+      }),
+    );
   },
 };

@@ -1,14 +1,18 @@
 import 'dotenv/config';
-import { seedData } from './src/data/prismaDB.ts';
+import { prisma } from './src/infrastructure/persistence/prisma.js';
+import { seedDatabase } from './src/infrastructure/persistence/seed.js';
 
 async function main() {
   console.log('Starting seed...');
   try {
-    await seedData();
+    await seedDatabase();
     console.log('Database seeded successfully');
   } catch (error) {
     console.error('Seed failed:', error);
+    process.exitCode = 1;
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
-main();
+void main();

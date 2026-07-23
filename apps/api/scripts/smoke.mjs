@@ -1,32 +1,14 @@
-import { fileURLToPath } from "node:url";
-import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import assert from "node:assert/strict";
+import { startTestServer, stopTestServer, testPort } from "./test-server.mjs";
 
-const baseUrl = "http://127.0.0.1:3000/api/v1";
-const rootDir = fileURLToPath(new URL("../", import.meta.url));
-
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const waitForServer = async () => {
-  for (let i = 0; i < 20; i += 1) {
-    try {
-      const response = await fetch(`${baseUrl}/health`);
-      if (response.ok) return;
-    } catch {
-      // retry
-    }
-    await wait(250);
-  }
-
-  throw new Error("API server did not start in time");
-};
+let baseUrl;
 
 const run = async () => {
-  const child = spawn("node", ["src/index.js"], { cwd: rootDir, stdio: "inherit" });
+  const server = await startTestServer(testPort("SMOKE_TEST_PORT", 3103));
+  baseUrl = server.baseUrl;
 
   try {
-    await waitForServer();
-
     // Verify auth endpoint
     const loginRes = await fetch(`${baseUrl}/login`, {
       method: "POST",
@@ -47,7 +29,7 @@ const run = async () => {
     const createProjectRes = await fetch(`${baseUrl}/projects`, {
       method: "POST",
       headers: { ...authHeader, "content-type": "application/json" },
-      body: JSON.stringify({ key: `PL${Date.now().toString().slice(-3)}`, name: "Planning" }),
+      body: JSON.stringify({ key: `PL${randomUUID().replaceAll("-", "").slice(0, 8).toUpperCase()}`, name: "Planning" }),
     });
     assert.equal(createProjectRes.status, 201);
 
@@ -68,10 +50,11 @@ const run = async () => {
     const createIssueRes = await fetch(`${baseUrl}/projects/${projectId}/issues`, {
       method: "POST",
       headers: { ...authHeader, "content-type": "application/json" },
-      body: JSON.stringify({ title: "Smoke test issue", reporterId: "user-pm" }),
+      body: JSON.stringify({ title: "Smoke test issue", reporterId: "user-dev" }),
     });
     assert.equal(createIssueRes.status, 201);
     const createIssueBody = await createIssueRes.json();
+    assert.equal(createIssueBody.data.reporterId, "user-pm");
     const issueId = createIssueBody.data.id;
 
     const assignRes = await fetch(`${baseUrl}/issues/${issueId}/assignee`, {
@@ -94,6 +77,7 @@ const run = async () => {
       body: JSON.stringify({ body: "Looks good", authorId: "user-dev" }),
     });
     assert.equal(commentRes.status, 201);
+    assert.equal((await commentRes.json()).data.authorId, "user-pm");
 
     const boardRes = await fetch(`${baseUrl}/projects/${projectId}/board`, { headers: authHeader });
     assert.equal(boardRes.status, 200);
@@ -128,7 +112,7 @@ const run = async () => {
 
     console.log("Smoke test passed");
   } finally {
-    child.kill("SIGTERM");
+    await stopTestServer(server.child);
   }
 };
 

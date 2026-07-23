@@ -1,25 +1,8 @@
-import { fileURLToPath } from "node:url";
-import { spawn } from "node:child_process";
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { startTestServer, stopTestServer, testPort } from "./test-server.mjs";
 
-const baseUrl = "http://127.0.0.1:3000/api/v1";
-const rootDir = fileURLToPath(new URL("../", import.meta.url));
-
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const waitForServer = async () => {
-  for (let i = 0; i < 30; i += 1) {
-    try {
-      const response = await fetch(`${baseUrl}/health`);
-      if (response.ok) return;
-    } catch {
-      // retry
-    }
-    await wait(200);
-  }
-
-  throw new Error("API server did not start in time");
-};
+let baseUrl;
 
 const assertErrorShape = (body, status) => {
   assert.equal(typeof body?.error?.message, "string");
@@ -27,11 +10,10 @@ const assertErrorShape = (body, status) => {
 };
 
 const run = async () => {
-  const child = spawn("node", ["src/index.js"], { cwd: rootDir, stdio: "inherit" });
+  const server = await startTestServer(testPort("CONTRACT_TEST_PORT", 3101));
+  baseUrl = server.baseUrl;
 
   try {
-    await waitForServer();
-
     const specRes = await fetch(`${baseUrl}/openapi.yaml`);
     assert.equal(specRes.status, 200);
     const specText = await specRes.text();
@@ -62,6 +44,25 @@ const run = async () => {
 
     const issueId = issueBody.data.id;
 
+    const dashboardRes = await fetch(`${baseUrl}/dashboard`, { headers: auth });
+    assert.equal(dashboardRes.status, 200);
+    const dashboard = (await dashboardRes.json()).data;
+    assert.deepEqual(
+      dashboard.statusBreakdown.map((item) => item.statusId),
+      ["todo", "doing", "done"],
+      "dashboard status breakdown must follow workflow order",
+    );
+    assert.equal(
+      dashboard.statusBreakdown.every((item) => typeof item.statusName === "string" && item.statusName.length > 0),
+      true,
+      "dashboard status breakdown must expose readable workflow names",
+    );
+    const dashboardIssue = dashboard.openIssues.find((item) => item.id === issueId);
+    assert.ok(dashboardIssue, "new open Issue should appear in the dashboard projection");
+    assert.equal(dashboardIssue.projectKey, "CORE");
+    assert.equal(dashboardIssue.projectName, "Core Refactor");
+    assert.equal("dueDate" in dashboardIssue, false);
+
     const listRes = await fetch(`${baseUrl}/projects/proj-1/issues?page=1&pageSize=10`, { headers: auth });
     assert.equal(listRes.status, 200);
     const listBody = await listRes.json();
@@ -88,13 +89,14 @@ const run = async () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         name: "Outsider",
-        email: `outsider_${Date.now()}@example.com`,
+        email: `outsider_${randomUUID()}@example.com`,
         password: "Password1",
-        role: "member",
+        role: "owner",
       }),
     });
     assert.equal(outsiderLoginRes.status, 201);
     const outsider = await outsiderLoginRes.json();
+    assert.equal(outsider.user.role, "project_admin");
     const outsiderAuth = { Authorization: `Bearer ${outsider.accessToken}` };
 
     const forbiddenRes = await fetch(`${baseUrl}/projects/proj-1`, { headers: outsiderAuth });
@@ -109,7 +111,7 @@ const run = async () => {
 
     console.log("Contract test passed");
   } finally {
-    child.kill("SIGTERM");
+    await stopTestServer(server.child);
   }
 };
 

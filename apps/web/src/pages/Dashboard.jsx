@@ -1,95 +1,93 @@
-import { useEffect, useState } from "react";
-import { fetchDashboardData } from "../services/dashboard";
+import { RefreshCw } from "lucide-react";
+import { Alert, Button, Card, EmptyState, LoadingState, PageHeader } from "../components/ui";
+import DashboardIssueList from "../features/dashboard/components/DashboardIssueList";
+import DashboardMetricGrid from "../features/dashboard/components/DashboardMetricGrid";
+import StatusBreakdownCard from "../features/dashboard/components/StatusBreakdownCard";
+import { useDashboardWorkspace } from "../features/dashboard/useDashboardWorkspace";
 
-const StatCard = ({ label, value }) => (
-  <div className="rounded-lg border bg-white p-4 shadow-sm">
-    <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
-    <p className="mt-2 text-2xl font-semibold">{value}</p>
-  </div>
-);
+const formatUpdatedAt = (value) => new Intl.DateTimeFormat("zh-TW", {
+  hour: "2-digit",
+  minute: "2-digit",
+}).format(value);
 
 export default function Dashboard() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [dashboard, setDashboard] = useState(null);
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const response = await fetchDashboardData();
-        setDashboard(response.data?.data ?? null);
-      } catch {
-        setError("無法載入儀表板資料");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    load();
-  }, []);
-
-  if (loading) {
-    return <p className="text-sm text-gray-500">載入中...</p>;
-  }
-
-  if (error) {
-    return <p className="text-sm text-red-600">{error}</p>;
-  }
-
-  if (!dashboard) {
-    return <p className="text-sm text-gray-500">暫無資料</p>;
-  }
+  const workspace = useDashboardWorkspace();
+  const busy = workspace.loading || workspace.refreshing;
 
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold">Dashboard（Phase 進度版）</h1>
-        <p className="text-sm text-gray-600">以 issue 指標呈現專案執行狀況與逾期風險。</p>
-      </header>
+    <div className="space-y-6 sm:space-y-8">
+      <PageHeader
+        eyebrow="交付營運"
+        title="營運儀表板"
+        description="從專案、Issue 與交付風險快速判斷團隊現在最需要處理的事情。"
+        actions={(
+          <Button variant="secondary" onClick={workspace.refresh} disabled={busy}>
+            <RefreshCw
+              size={17}
+              className={busy ? "animate-spin motion-reduce:animate-none" : ""}
+              aria-hidden="true"
+            />
+            {workspace.refreshing ? "更新中…" : "重新整理"}
+          </Button>
+        )}
+      >
+        {workspace.lastUpdatedAt ? (
+          <p className="mt-2 text-xs text-muted">最近更新：{formatUpdatedAt(workspace.lastUpdatedAt)}</p>
+        ) : null}
+      </PageHeader>
 
-      <section className="grid gap-4 md:grid-cols-4">
-        <StatCard label="Projects" value={dashboard.totals.projects} />
-        <StatCard label="Issues" value={dashboard.totals.issues} />
-        <StatCard label="Notifications" value={dashboard.totals.notifications} />
-        <StatCard label="Milestones" value={dashboard.totals.milestones} />
-      </section>
+      {workspace.error ? (
+        <Alert tone="error" title={workspace.dashboard ? "更新失敗" : "資料載入失敗"}>
+          {workspace.error}
+        </Alert>
+      ) : null}
 
-      <section className="rounded-lg border bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-lg font-semibold">Status Breakdown</h2>
-        <div className="grid gap-2 md:grid-cols-3">
-          {dashboard.statusBreakdown.map((item) => (
-            <div key={item.statusId} className="rounded border px-3 py-2 text-sm">
-              {item.statusId}: {item.count}
-            </div>
-          ))}
-        </div>
-      </section>
+      {workspace.loading ? (
+        <Card><LoadingState label="正在整理交付指標…" /></Card>
+      ) : null}
 
-      <section className="grid gap-4 md:grid-cols-2">
-        <article className="rounded-lg border bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-lg font-semibold">Open Issues</h2>
-          <ul className="space-y-2 text-sm">
-            {dashboard.openIssues.map((issue) => (
-              <li key={issue.id} className="rounded border px-3 py-2">
-                #{issue.number} {issue.title}（{issue.statusId}）
-              </li>
-            ))}
-            {dashboard.openIssues.length === 0 ? <li>目前沒有開啟中的 Issue</li> : null}
-          </ul>
-        </article>
+      {!workspace.loading && workspace.dashboard ? (
+        <>
+          <DashboardMetricGrid totals={workspace.dashboard.totals} />
+          <StatusBreakdownCard
+            items={workspace.dashboard.statusBreakdown}
+            maxCount={workspace.maxStatusCount}
+          />
+          <section aria-label="工作清單" className="grid gap-4 xl:grid-cols-2">
+            <DashboardIssueList
+              title="進行中的工作"
+              description="仍需要團隊推進的 Issue。"
+              issues={workspace.dashboard.openIssues}
+              emptyTitle="目前沒有進行中的工作"
+              emptyDescription="新的 Issue 建立後會出現在這裡。"
+              actionHref="/board"
+              actionLabel="查看看板"
+            />
+            <DashboardIssueList
+              title="逾期風險"
+              description="已超過到期日且尚未完成的工作。"
+              issues={workspace.dashboard.overdueIssues}
+              risk
+              emptyTitle="沒有逾期項目"
+              emptyDescription="目前的交付節奏維持正常。"
+              actionHref="/calendar"
+              actionLabel="查看行事曆"
+            />
+          </section>
+        </>
+      ) : null}
 
-        <article className="rounded-lg border bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-lg font-semibold">Overdue Issues</h2>
-          <ul className="space-y-2 text-sm">
-            {dashboard.overdueIssues.map((issue) => (
-              <li key={issue.id} className="rounded border border-red-200 bg-red-50 px-3 py-2">
-                #{issue.number} {issue.title}
-              </li>
-            ))}
-            {dashboard.overdueIssues.length === 0 ? <li>目前沒有逾期 Issue</li> : null}
-          </ul>
-        </article>
-      </section>
+      {!workspace.loading && !workspace.dashboard ? (
+        <Card>
+          <EmptyState
+            title={workspace.error ? "暫時無法顯示儀表板" : "目前沒有儀表板資料"}
+            description={workspace.error ? "請確認服務狀態後再試一次。" : "建立專案與 Issue 後即可開始追蹤交付狀態。"}
+            action={workspace.error ? (
+              <Button variant="secondary" onClick={workspace.retry}>重新載入</Button>
+            ) : null}
+          />
+        </Card>
+      ) : null}
     </div>
   );
 }

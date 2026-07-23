@@ -1,70 +1,90 @@
-import axiosInstance from "../../services/axiosInstance";
+import { apiClient, apiRequest } from "../../shared/api/client";
+import type { components } from "../../shared/api/schema";
 
-export type IssuePayload = {
-  title: string;
-  description?: string;
-  priority?: "low" | "medium" | "high";
-  assigneeId?: string | null;
-  reporterId?: string | null;
-  dueAt?: string | null;
-};
-
-export type WorkflowStatus = {
-  id: string;
-  name: string;
-  order: number;
+export type IssuePayload = components["schemas"]["CreateIssueRequest"];
+export type IssueUpdatePayload = components["schemas"]["UpdateIssueRequest"];
+export type WorkflowStatus = components["schemas"]["WorkflowStatus"];
+type IssueQuery = {
+  q?: string;
+  statusId?: string;
+  assigneeId?: string;
+  sortBy?: "number" | "updatedAt";
+  order?: "asc" | "desc";
+  page?: number;
+  pageSize?: number;
 };
 
 export const issueService = {
   fetchStatuses() {
-    return axiosInstance.get("/workflows/statuses");
+    return apiRequest(apiClient.GET("/workflows/statuses"));
   },
 
-  fetchIssuesByProject(projectId: string, query?: Record<string, string | number | undefined>) {
-    return axiosInstance.get(`/projects/${projectId}/issues`, { params: query });
+  fetchIssuesByProject(projectId: string, query: IssueQuery = {}) {
+    return apiRequest(
+      apiClient.GET("/projects/{projectId}/issues", {
+        params: { path: { projectId }, query },
+      }),
+    );
   },
 
   createIssue(projectId: string, data: IssuePayload) {
-    return axiosInstance.post(`/projects/${projectId}/issues`, data, {
-      headers: { "x-role": "member" },
-    });
+    return apiRequest(
+      apiClient.POST("/projects/{projectId}/issues", {
+        params: { path: { projectId } },
+        body: data,
+      }),
+    );
+  },
+
+  updateIssue(id: string, data: IssueUpdatePayload) {
+    return apiRequest(
+      apiClient.PATCH("/issues/{issueId}", {
+        params: { path: { issueId: id } },
+        body: data,
+      }),
+    );
   },
 
   transitionIssueStatus(id: string, statusId: string) {
-    return axiosInstance.patch(
-      `/issues/${id}/status`,
-      { statusId },
-      {
-        headers: { "x-role": "member" },
-      },
+    return apiRequest(
+      apiClient.PATCH("/issues/{issueId}/status", {
+        params: { path: { issueId: id } },
+        body: { statusId },
+      }),
     );
   },
 
   assignIssue(id: string, assigneeId: string | null) {
-    return axiosInstance.patch(
-      `/issues/${id}/assignee`,
-      { assigneeId },
-      {
-        headers: { "x-role": "member" },
-      },
+    return apiRequest(
+      apiClient.PATCH("/issues/{issueId}/assignee", {
+        params: { path: { issueId: id } },
+        body: { assigneeId },
+      }),
     );
   },
 
   fetchIssueComments(id: string) {
-    return axiosInstance.get(`/issues/${id}/comments`);
+    return apiRequest(apiClient.GET("/issues/{issueId}/comments", { params: { path: { issueId: id } } }));
   },
 
   createIssueComment(id: string, body: string) {
-    return axiosInstance.post(
-      `/issues/${id}/comments`,
-      { body },
-      {
-        headers: { "x-role": "member" },
-      },
+    return apiRequest(
+      apiClient.POST("/issues/{issueId}/comments", {
+        params: { path: { issueId: id } },
+        body: { body },
+      }),
     );
   },
 
   fetchIssueActivity(id: string, limit = 30) {
-    return axiosInstance.get(`/issues/${id}/activity`, { params: { limit } });
+    return apiRequest(
+      apiClient.GET("/issues/{issueId}/activity", {
+        params: { path: { issueId: id }, query: { limit } },
+      }),
+    );
+  },
+
+  fetchActivityLogs() {
+    return apiRequest(apiClient.GET("/activity-logs"));
   },
 };

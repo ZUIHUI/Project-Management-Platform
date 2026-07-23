@@ -1,31 +1,30 @@
-# API Dockerfile
-FROM node:18-alpine
+FROM node:22-alpine AS build
 
-# 設置工作目錄
-WORKDIR /app
+WORKDIR /workspace
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
+RUN npm ci --workspace apps/api --include-workspace-root
 
-# 複製 package.json 和 package-lock.json
-COPY package*.json ./
+COPY apps/api apps/api
+RUN npm --workspace apps/api run db:generate
+RUN npm --workspace apps/api run build
+RUN npm prune --omit=dev --workspace apps/api
 
-# 安裝依賴
-RUN npm ci --only=production
+FROM node:22-alpine AS runtime
 
-# 複製源代碼
-COPY . .
+ENV NODE_ENV=production
+WORKDIR /workspace
 
-# 生成 Prisma 客戶端
-RUN npx prisma generate
+RUN addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 api
 
-# 創建非 root 用戶
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nodejs -u 1001
+COPY --from=build --chown=api:nodejs /workspace/package.json /workspace/package-lock.json ./
+COPY --from=build --chown=api:nodejs /workspace/node_modules ./node_modules
+COPY --from=build --chown=api:nodejs /workspace/apps/api ./apps/api
 
-# 更改文件所有權
-RUN chown -R nodejs:nodejs /app
-USER nodejs
-
-# 暴露端口
+USER api
+WORKDIR /workspace/apps/api
 EXPOSE 3000
 
-# 啟動命令
-CMD ["npm", "run", "dev"]
+CMD ["sh", "-c", "npm run db:migrate:deploy && npm run start"]

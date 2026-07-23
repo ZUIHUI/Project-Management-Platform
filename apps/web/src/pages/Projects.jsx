@@ -1,226 +1,115 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { projectService } from "../features/project";
+import { useState } from "react";
+import { FolderKanban, Plus, RefreshCw } from "lucide-react";
+import { Alert, Button, Card, EmptyState, LoadingState, PageHeader } from "../components/ui";
+import ProjectArchiveDialog from "../features/project/components/ProjectArchiveDialog";
+import ProjectCreateDialog from "../features/project/components/ProjectCreateDialog";
+import ProjectNavigator from "../features/project/components/ProjectNavigator";
+import ProjectOverview from "../features/project/components/ProjectOverview";
+import ProjectPlanningDialog from "../features/project/components/ProjectPlanningDialog";
+import { useProjectsWorkspace } from "../features/project/useProjectsWorkspace";
 
 export default function Projects() {
-  const [projects, setProjects] = useState([]);
-  const [keyword, setKeyword] = useState("");
-  const [newProject, setNewProject] = useState({ key: "", name: "", description: "" });
-  const [selectedProjectId, setSelectedProjectId] = useState("");
-  const [milestoneName, setMilestoneName] = useState("");
-  const [sprintForm, setSprintForm] = useState({ name: "", goal: "" });
-  const [error, setError] = useState("");
-
-  const loadProjects = useCallback(async () => {
-    try {
-      const response = await projectService.fetchProjects();
-      const list = response.data?.data ?? [];
-      setProjects(list);
-      if (!selectedProjectId && list.length > 0) {
-        setSelectedProjectId(list[0].id);
-      }
-    } catch {
-      setError("無法載入專案");
-    }
-  }, [selectedProjectId]);
-
-  useEffect(() => {
-    loadProjects();
-  }, [loadProjects]);
-
-  const filtered = useMemo(
-    () => projects.filter((project) => project.name.toLowerCase().includes(keyword.toLowerCase())),
-    [projects, keyword],
-  );
-
-  const selectedProject = useMemo(
-    () => projects.find((project) => project.id === selectedProjectId),
-    [projects, selectedProjectId],
-  );
-
-  const handleCreateProject = async (event) => {
-    event.preventDefault();
-    if (!newProject.key || !newProject.name) {
-      return;
-    }
-
-    try {
-      await projectService.createProject(newProject);
-      setNewProject({ key: "", name: "", description: "" });
-      await loadProjects();
-    } catch {
-      setError("新增專案失敗（可能 key 重複）");
-    }
-  };
-
-  const handleArchive = async (projectId) => {
-    try {
-      await projectService.archiveProject(projectId);
-      await loadProjects();
-    } catch {
-      setError("封存失敗");
-    }
-  };
-
-  const handleCreateMilestone = async (event) => {
-    event.preventDefault();
-    if (!selectedProjectId || !milestoneName.trim()) {
-      return;
-    }
-
-    try {
-      await projectService.createMilestone(selectedProjectId, { name: milestoneName.trim() });
-      setMilestoneName("");
-      await loadProjects();
-    } catch {
-      setError("新增里程碑失敗");
-    }
-  };
-
-  const handleCreateSprint = async (event) => {
-    event.preventDefault();
-    if (!selectedProjectId || !sprintForm.name.trim()) {
-      return;
-    }
-
-    try {
-      await projectService.createSprint(selectedProjectId, {
-        name: sprintForm.name.trim(),
-        goal: sprintForm.goal.trim() || undefined,
-      });
-      setSprintForm({ name: "", goal: "" });
-      await loadProjects();
-    } catch {
-      setError("新增 Sprint 失敗");
-    }
-  };
+  const workspace = useProjectsWorkspace();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [planningKind, setPlanningKind] = useState("");
+  const [archiveTarget, setArchiveTarget] = useState(null);
 
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold">Project Delivery Setup</h1>
-        <p className="text-sm text-gray-600">以主流流程管理：Project → Milestone → Sprint → Issues。</p>
-      </header>
+    <div className="space-y-6 sm:space-y-8">
+      <PageHeader
+        eyebrow="專案組合"
+        title="專案"
+        description="先掌握交付組合，再進入單一專案安排里程碑、Sprint 與團隊工作。"
+        actions={workspace.canCreateProject ? (
+          <Button onClick={() => { workspace.clearFeedback(); setCreateOpen(true); }}>
+            <Plus size={17} aria-hidden="true" />建立專案
+          </Button>
+        ) : null}
+      />
 
-      {error ? <p className="rounded bg-red-50 p-2 text-sm text-red-600">{error}</p> : null}
-
-      <section className="rounded-lg border bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-lg font-semibold">建立新專案（產品線/服務）</h2>
-        <form className="grid gap-2 md:grid-cols-4" onSubmit={handleCreateProject}>
-          <input
-            className="rounded border px-3 py-2"
-            placeholder="Project Key"
-            value={newProject.key}
-            onChange={(event) => setNewProject((prev) => ({ ...prev, key: event.target.value.toUpperCase() }))}
-          />
-          <input
-            className="rounded border px-3 py-2"
-            placeholder="Project Name"
-            value={newProject.name}
-            onChange={(event) => setNewProject((prev) => ({ ...prev, name: event.target.value }))}
-          />
-          <input
-            className="rounded border px-3 py-2"
-            placeholder="Description"
-            value={newProject.description}
-            onChange={(event) => setNewProject((prev) => ({ ...prev, description: event.target.value }))}
-          />
-          <button className="rounded bg-blue-600 px-3 py-2 text-white" type="submit">
-            新增專案
-          </button>
-        </form>
-      </section>
-
-      <section className="grid gap-4 xl:grid-cols-3">
-        <article className="rounded-lg border bg-white p-4 shadow-sm xl:col-span-1">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">專案清單</h2>
-            <input
-              className="rounded border px-2 py-1 text-sm"
-              placeholder="搜尋"
-              value={keyword}
-              onChange={(event) => setKeyword(event.target.value)}
-            />
-          </div>
-          <ul className="space-y-2">
-            {filtered.map((project) => (
-              <li
-                key={project.id}
-                className={`rounded border px-3 py-2 ${selectedProjectId === project.id ? "border-blue-500 bg-blue-50" : ""}`}
-              >
-                <button type="button" className="w-full text-left" onClick={() => setSelectedProjectId(project.id)}>
-                  <div className="font-medium">
-                    {project.key} - {project.name}
-                  </div>
-                  <div className="text-xs text-gray-500">狀態：{project.status}</div>
-                </button>
-                <button type="button" className="mt-2 rounded border px-2 py-1 text-xs" onClick={() => handleArchive(project.id)}>
-                  封存
-                </button>
-              </li>
-            ))}
-          </ul>
-        </article>
-
-        <article className="rounded-lg border bg-white p-4 shadow-sm xl:col-span-2">
-          <h2 className="mb-3 text-lg font-semibold">Delivery Plan（里程碑 + Sprint）</h2>
-          {selectedProject ? (
-            <div className="space-y-4 text-sm">
-              <div className="rounded border border-slate-200 bg-slate-50 p-3">
-                <p className="font-semibold">
-                  {selectedProject.key} - {selectedProject.name}
-                </p>
-                <p className="text-gray-600">{selectedProject.description || "尚未填寫描述"}</p>
-              </div>
-
-
-              <div className="flex gap-2">
-                <Link to={`/projects/${selectedProject.id}`} className="rounded border px-3 py-1">專案詳情</Link>
-                <Link to={`/projects/${selectedProject.id}/issues`} className="rounded border px-3 py-1">Issue List</Link>
-                <Link to={`/projects/${selectedProject.id}/board`} className="rounded border px-3 py-1">Board</Link>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <form className="space-y-2 rounded border p-3" onSubmit={handleCreateMilestone}>
-                  <h3 className="font-semibold">Milestone（版本/交付節點）</h3>
-                  <input
-                    className="w-full rounded border px-2 py-1"
-                    placeholder="例如：MVP Beta"
-                    value={milestoneName}
-                    onChange={(event) => setMilestoneName(event.target.value)}
-                  />
-                  <button className="rounded border px-3 py-1" type="submit">
-                    新增 Milestone
-                  </button>
-                  <p className="text-xs text-gray-500">目前數量：{selectedProject.milestones?.length ?? 0}</p>
-                </form>
-
-                <form className="space-y-2 rounded border p-3" onSubmit={handleCreateSprint}>
-                  <h3 className="font-semibold">Sprint（迭代）</h3>
-                  <input
-                    className="w-full rounded border px-2 py-1"
-                    placeholder="例如：Sprint 1"
-                    value={sprintForm.name}
-                    onChange={(event) => setSprintForm((prev) => ({ ...prev, name: event.target.value }))}
-                  />
-                  <input
-                    className="w-full rounded border px-2 py-1"
-                    placeholder="Sprint Goal（可選）"
-                    value={sprintForm.goal}
-                    onChange={(event) => setSprintForm((prev) => ({ ...prev, goal: event.target.value }))}
-                  />
-                  <button className="rounded border px-3 py-1" type="submit">
-                    新增 Sprint
-                  </button>
-                  <p className="text-xs text-gray-500">目前數量：{selectedProject.sprints?.length ?? 0}</p>
-                </form>
-              </div>
+      <div aria-live="polite" className="space-y-3">
+        {workspace.error ? (
+          <Alert tone="error" title="無法載入專案">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <span>{workspace.error}</span>
+              <Button variant="outline" size="sm" onClick={workspace.refresh}>
+                <RefreshCw size={16} aria-hidden="true" />重新載入
+              </Button>
             </div>
-          ) : (
-            <p className="text-sm text-gray-500">請選擇專案</p>
-          )}
-        </article>
-      </section>
+          </Alert>
+        ) : null}
+        {workspace.notice ? <Alert tone="success">{workspace.notice}</Alert> : null}
+      </div>
+
+      {workspace.loading ? <Card><LoadingState label="載入專案中…" /></Card> : null}
+
+      {!workspace.loading && workspace.projects.length ? (
+        <section className="grid items-start gap-4 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[360px_minmax(0,1fr)]" aria-label="專案組合與目前專案">
+          <ProjectNavigator
+            projects={workspace.projects}
+            filteredProjects={workspace.filteredProjects}
+            selectedProjectId={workspace.selectedProjectId}
+            onSelectProject={workspace.selectProject}
+            keyword={workspace.keyword}
+            onKeywordChange={workspace.setKeyword}
+            activeCount={workspace.activeCount}
+          />
+
+          {workspace.selectedProject ? (
+            <ProjectOverview
+              project={workspace.selectedProject}
+              canContribute={workspace.canContribute}
+              canAdminister={workspace.canAdminister}
+              onCreateMilestone={() => setPlanningKind("milestone")}
+              onCreateSprint={() => setPlanningKind("sprint")}
+              onArchive={() => { workspace.clearArchiveError(); setArchiveTarget(workspace.selectedProject); }}
+            />
+          ) : null}
+        </section>
+      ) : null}
+
+      {!workspace.loading && !workspace.projects.length && !workspace.error ? (
+        <Card>
+          <EmptyState
+            icon={FolderKanban}
+            title="還沒有專案"
+            description={workspace.canCreateProject ? "建立第一個專案，開始整理交付範圍與團隊工作。" : "目前沒有你可以查看的專案。"}
+            action={workspace.canCreateProject ? (
+              <Button onClick={() => setCreateOpen(true)}><Plus size={17} aria-hidden="true" />建立第一個專案</Button>
+            ) : null}
+          />
+        </Card>
+      ) : null}
+
+      <ProjectCreateDialog
+        isOpen={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreate={workspace.createProject}
+        saving={workspace.busyAction === "project"}
+        error={workspace.createError}
+        errorField={workspace.createErrorField}
+        onClearError={workspace.clearCreateError}
+      />
+
+      <ProjectPlanningDialog
+        kind={planningKind || "milestone"}
+        projectName={workspace.selectedProject?.name ?? "目前專案"}
+        isOpen={Boolean(planningKind)}
+        onClose={() => setPlanningKind("")}
+        onCreate={planningKind === "sprint" ? workspace.createSprint : workspace.createMilestone}
+        saving={workspace.busyAction === planningKind}
+        error={planningKind === "sprint" ? workspace.sprintError : workspace.milestoneError}
+        onClearError={planningKind === "sprint" ? workspace.clearSprintError : workspace.clearMilestoneError}
+      />
+
+      <ProjectArchiveDialog
+        project={archiveTarget}
+        onClose={() => setArchiveTarget(null)}
+        onConfirm={workspace.archiveProject}
+        saving={workspace.busyAction === "archive"}
+        error={workspace.archiveError}
+        onClearError={workspace.clearArchiveError}
+      />
     </div>
   );
 }

@@ -17,6 +17,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      VITE_API_URL: ${{ vars.VITE_API_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,7 +32,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build web app (demo mode)
+      - name: Require formal API URL
+        shell: bash
+        run: |
+          if [ -z "$VITE_API_URL" ]; then
+            echo "::error::Set the repository variable VITE_API_URL before deploying the platform client."
+            exit 1
+          fi
+
+      - name: Build formal platform client
         run: npm --workspace apps/web run build
 
       - name: Setup Pages

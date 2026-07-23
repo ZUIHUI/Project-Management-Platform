@@ -1,206 +1,50 @@
-# 🚀 部署指南
+# 部署策略
 
-本項目支持多種部署方式，選擇適合您需求的方案。
+本專案有兩種明確拓撲。兩者共用 PostgreSQL、同一份 Prisma migration 與 OpenAPI 契約，但用途不同。
 
-## 📋 快速開始
+## 1. Vercel：前端與短生命週期 HTTP API
 
-### 使用部署腳本（推薦）
+- `apps/web` 建置為靜態資產。
+- `api/index.ts` 將 Express 模組化單體包成單一 Vercel Function。
+- 適合 CRUD、查詢與一般互動式請求。
+- `vercel.json` 將函式上限設為 30 秒；不要在此執行長工作、排程 worker、常駐 WebSocket 或 migration。
+- PostgreSQL 必須是外部服務；release pipeline 先執行 `npm --workspace apps/api run db:migrate:deploy`，再部署程式。
 
-```bash
-# 使腳本可執行
-chmod +x deploy.sh
+必要環境變數：
 
-# 部署到 Vercel（最簡單）
-./deploy.sh vercel
-
-# 或者部署到 Railway
-./deploy.sh railway
-
-# 或者使用 Docker
-./deploy.sh docker
-```
-
-## 🎯 部署選項詳解
-
-### 1. Vercel 部署（推薦新手）
-
-**優點**：免費額度充足，自動 HTTPS，全局 CDN
-
-```bash
-# 1. 安裝 Vercel CLI
-npm install -g vercel
-
-# 2. 登錄
-vercel login
-
-# 3. 部署
-vercel --prod
-
-# 4. 設置環境變數
-vercel env add DATABASE_URL
-vercel env add JWT_SECRET
-```
-
-**環境變數**：
-- `DATABASE_URL`: PostgreSQL 連接字符串
-- `JWT_SECRET`: JWT 密鑰（至少 256 位）
-
-**PR 合併後自動部署到 Vercel（GitHub Actions）**：
-
-倉庫已提供 `.github/workflows/deploy-vercel-on-merge.yml`，當 PR 被合併到 `main` 或 `master` 時會自動觸發 production 部署。
-
-請先在 GitHub Repository Secrets 設定：
-- `VERCEL_TOKEN`
-- `VERCEL_ORG_ID`
-- `VERCEL_PROJECT_ID`
-
-### 2. Railway 部署（全功能）
-
-**優點**：一站式解決方案，內建數據庫
-
-1. 訪問 [Railway.app](https://railway.app)
-2. 連接 GitHub 倉庫
-3. 添加 PostgreSQL 數據庫
-4. 設置環境變數
-5. 自動部署
-
-### 3. Docker 部署（自托管）
-
-**優點**：完全控制，適合生產環境
-
-```bash
-# 啟動所有服務
-docker-compose up -d
-
-# 查看日誌
-docker-compose logs -f
-
-# 停止服務
-docker-compose down
-```
-
-**服務端口**：
-- 前端：http://localhost:5173
-- 後端：http://localhost:3000
-- 數據庫：localhost:5432
-
-### 4. Render 部署
-
-**優點**：簡單易用，支持多種語言
-
-1. 訪問 [Render.com](https://render.com)
-2. 創建 PostgreSQL 數據庫
-3. 創建 Web Service（後端）
-4. 創建 Static Site（前端）
-5. 連接 GitHub 倉庫
-
-## 🔧 環境變數配置
-
-複製 `.env.production.example` 為 `.env.production` 或生產環境變數：
-
-```bash
-# 數據庫
-DATABASE_URL=postgresql://user:pass@host:5432/dbname
-
-# JWT
-JWT_SECRET=your-256-bit-secret-key
-
-# 應用
+```text
+DATABASE_URL=postgresql://...
+JWT_SECRET=<long-random-secret>
+JWT_REFRESH_SECRET=<different-long-random-secret>
 NODE_ENV=production
-PORT=3000
+VITE_API_URL=https://<host>/api/v1
 ```
 
-## 🗄️ 數據庫設置
+## 2. 長駐容器：API、worker 與即時連線
 
-### 生產數據庫選項
+- `apps/api/Dockerfile` 編譯 TypeScript，runtime 啟動前執行 `prisma migrate deploy`。
+- 適合未來的背景工作、WebSocket、長時間匯入匯出與可控的連線池。
+- worker 應使用相同 application/domain 模組，但設成獨立 process；不拆成不同資料模型或微服務。
+- 正式環境不要自動 seed。`docker-compose.yml` 只為本機示範資料執行 compiled seed。
 
-1. **Neon.tech**（推薦，免費 PostgreSQL）
-2. **Supabase**（免費額度）
-3. **Railway PostgreSQL**（內建）
-4. **AWS RDS**（企業級）
-
-### 數據庫遷移
+本機（需要 Docker）：
 
 ```bash
-cd apps/api
-npx prisma generate
-npx prisma db push
-npm run db:seed
+docker compose up --build
 ```
 
-## 🧪 測試部署
+- Web：`http://localhost:5173`
+- API：`http://localhost:3000/api/v1`
+- PostgreSQL：`localhost:5432`
 
-部署後測試以下功能：
+部署探針與驗收腳本使用 `/api/v1/health/ready`，只有 API 與 PostgreSQL 都可用時才回 200；`/api/v1/health` 保留為不查資料庫的程序存活探針。
+
+## Migration 規則
 
 ```bash
-# 測試 API 健康檢查
-curl https://your-domain.com/api/v1/health
-
-# 測試項目 API
-curl https://your-domain.com/api/v1/projects
-
-# 測試前端
-open https://your-domain.com
+npm --workspace apps/api run db:migrate:dev     # 僅開發時建立 migration
+npm --workspace apps/api run db:migrate:deploy  # CI/release 套用已提交 migration
+npm --workspace apps/api run db:seed            # 明確要求時才灌示範資料
 ```
 
-## 📊 監控和維護
-
-### 日誌查看
-
-```bash
-# Vercel
-vercel logs
-
-# Railway
-railway logs
-
-# Docker
-docker-compose logs -f api
-```
-
-### 數據庫備份
-
-```bash
-# 使用 pg_dump
-pg_dump $DATABASE_URL > backup.sql
-
-# 或使用 Prisma
-npx prisma db push --force-reset
-```
-
-## 💰 成本估計
-
-| 平台 | 免費額度 | 付費方案 |
-|------|---------|----------|
-| Vercel | 100GB 流量 | $20/月 |
-| Railway | $5 額度 | $5+/月 |
-| Render | 750 小時 | $7+/月 |
-| Neon | 免費 | $0-50/月 |
-
-## 🆘 故障排除
-
-### 常見問題
-
-1. **數據庫連接失敗**
-   - 檢查 DATABASE_URL 格式
-   - 確保數據庫可訪問
-
-2. **前端無法加載**
-   - 檢查 VITE_API_URL 配置
-   - 確認 CORS 設置
-
-3. **Prisma 錯誤**
-   ```bash
-   npx prisma generate
-   npx prisma db push
-   ```
-
-### 獲取幫助
-
-- 查看 [README.md](README.md) 了解項目詳情
-- 檢查 [API 文檔](apps/api/API.md)
-- 查看 [架構文檔](docs/architecture-vision.md)
-
----
-
-🎉 **部署完成！** 您的項目管理平台已準備就緒。
+禁止在正式部署使用 `prisma db push` 或 `--force-reset`。目前的 `20260720000000_postgresql_baseline` 是新的 PostgreSQL 基線；若既有環境曾套用舊 SQLite migration 名稱，必須先盤點資料並以 `prisma migrate resolve` 建立個別遷移計畫，不可直接覆蓋。

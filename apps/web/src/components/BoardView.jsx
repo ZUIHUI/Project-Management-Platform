@@ -1,106 +1,105 @@
-import { useState, useEffect } from 'react';
-import { DndProvider, useDrag, useDrop } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
+import { useMemo } from "react";
+import { CalendarClock, GripVertical, Inbox } from "lucide-react";
+import { DndProvider, useDrag, useDrop } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
+import { Badge, Card, CardHeader, EmptyState } from "./ui";
+import { cn } from "./ui/styles";
+import {
+  DEFAULT_WORKFLOW_STATUS_OPTIONS,
+  getIssuePriorityPresentation,
+} from "../features/issue/workflowPresentation.js";
 
-const TaskCard = ({ task, onTaskClick }) => {
-  const [, drag] = useDrag({
-    type: 'TASK',
-    item: task,
+const formatDate = (value) => new Intl.DateTimeFormat("zh-TW", { month: "short", day: "numeric" }).format(new Date(value));
+
+function TaskCard({ task, statuses, selected, onTaskClick, onTaskMove }) {
+  const [{ dragging }, drag] = useDrag({
+    type: "TASK",
+    item: { id: task.id, statusId: task.statusId },
+    canDrag: Boolean(onTaskMove),
+    collect: (monitor) => ({ dragging: monitor.isDragging() }),
   });
+  const priority = getIssuePriorityPresentation(task.priority);
 
   return (
-    <div
+    <article
       ref={drag}
-      onClick={() => onTaskClick(task)}
-      className="p-3 bg-white border rounded shadow-sm hover:shadow-md cursor-move transition-shadow mb-2"
-    >
-      <p className="text-sm font-medium text-gray-800">{task.title}</p>
-      <div className="mt-2 flex items-center justify-between">
-        <span className={`text-xs px-2 py-1 rounded ${
-          task.priority === 'high' ? 'bg-red-100 text-red-800' :
-          task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-          'bg-green-100 text-green-800'
-        }`}>{task.priority || 'normal'}</span>
-        {task.assignee && (
-          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-            {task.assignee}
-          </span>
-        )}
-      </div>
-      {task.dueDate && (
-        <p className="text-xs text-gray-500 mt-1">
-          截止: {new Date(task.dueDate).toLocaleDateString()}
-        </p>
+      className={cn(
+        "rounded-card border bg-canvas p-4 transition-shadow hover:shadow-soft",
+        selected ? "border-brand shadow-soft" : "border-line",
+        dragging && "opacity-50",
       )}
-    </div>
+    >
+      <div className="flex items-start gap-3">
+        {onTaskMove ? <GripVertical className="mt-0.5 shrink-0 cursor-grab text-muted" size={18} aria-hidden="true" /> : null}
+        {onTaskClick ? <button type="button" onClick={() => onTaskClick(task)} aria-pressed={selected} className="min-h-11 min-w-0 flex-1 rounded-control text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+          <p className="text-xs font-mono text-muted">#{task.number}</p>
+          <h4 className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-ink">{task.title}</h4>
+        </button> : <div className="min-w-0 flex-1"><p className="text-xs font-mono text-muted">#{task.number}</p><h4 className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-ink">{task.title}</h4></div>}
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <Badge tone={priority.tone}>{priority.label}</Badge>
+        {task.assignee ? <Badge>{task.assigneeLabel ?? task.assignee}</Badge> : <span className="text-xs text-muted">未指派</span>}
+      </div>
+      {task.dueDate ? (
+        <p className="mt-3 flex items-center gap-1.5 text-xs text-muted"><CalendarClock size={14} aria-hidden="true" />{formatDate(task.dueDate)}</p>
+      ) : null}
+      {onTaskMove ? <label className="mt-4 block border-t border-line-soft pt-3 text-xs text-muted">
+        <span className="sr-only">移動「{task.title}」到其他狀態</span>
+        <select
+          aria-label={`移動「${task.title}」到其他狀態`}
+          value={task.statusId}
+          onChange={(event) => onTaskMove(task, event.target.value)}
+          className="min-h-11 w-full rounded-control border border-line bg-canvas px-3 text-xs font-semibold text-ink outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+        >
+          {statuses.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
+        </select>
+      </label> : null}
+    </article>
   );
-};
+}
 
-const StatusColumn = ({ status, tasks, onTaskClick, onTaskMove }) => {
-  const [, drop] = useDrop({
-    accept: 'TASK',
-    drop: (item) => onTaskMove(item, status),
+function StatusColumn({ status, tasks, statuses, selectedTaskId, onTaskClick, onTaskMove }) {
+  const headingId = `board-${encodeURIComponent(status.id)}`;
+  const [{ over }, drop] = useDrop({
+    accept: "TASK",
+    canDrop: () => Boolean(onTaskMove),
+    drop: (item) => {
+      if (item.statusId !== status.id) onTaskMove?.(item, status.id);
+    },
+    collect: (monitor) => ({ over: monitor.isOver() }),
   });
 
   return (
-    <div
-      ref={drop}
-      className="flex-1 bg-gray-50 rounded-lg p-4 min-h-96"
-    >
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-700">{status}</h3>
-        <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">
-          {tasks.length}
-        </span>
+    <section ref={drop} aria-labelledby={headingId} className={cn("w-[300px] shrink-0 rounded-card border border-line-soft bg-surface p-3 sm:w-[320px]", over && "border-brand bg-brand-soft")}>
+      <div className="flex min-h-11 items-center justify-between px-2">
+        <h3 id={headingId} className="text-sm font-semibold text-ink">{status.label}</h3>
+        <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-surface-strong px-2 font-mono text-xs text-body">{tasks.length}</span>
       </div>
-      <div className="space-y-2">
-        {tasks.map((task) => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            onTaskClick={onTaskClick}
-          />
-        ))}
+      <div className="mt-2 space-y-3">
+        {tasks.map((task) => <TaskCard key={task.id} task={task} statuses={statuses} selected={selectedTaskId === task.id} onTaskClick={onTaskClick} onTaskMove={onTaskMove} />)}
+        {!tasks.length ? <EmptyState compact icon={Inbox} title="此欄目前沒有工作" /> : null}
       </div>
-    </div>
+    </section>
   );
-};
+}
 
-export default function BoardView({ projectId, tasks = [], statuses = ['Todo', 'In Progress', 'Done'], onTaskClick, onStatusChange }) {
-  const [groupedTasks, setGroupedTasks] = useState({});
-
-  useEffect(() => {
-    const grouped = {};
-    statuses.forEach(status => {
-      grouped[status] = tasks.filter(t => t.status === status || (t.status_id && statuses[t.status_id] === status));
-    });
-    setGroupedTasks(grouped);
-  }, [tasks, statuses]);
-
-  const handleTaskMove = (task, newStatus) => {
-    onStatusChange?.(task.id, newStatus);
-  };
+export default function BoardView({ projectId, tasks = [], statusOptions = DEFAULT_WORKFLOW_STATUS_OPTIONS, selectedTaskId, onTaskClick, onStatusChange, showHeader = true }) {
+  const groupedTasks = useMemo(
+    () => Object.fromEntries(statusOptions.map((status) => [status.id, tasks.filter((task) => task.statusId === status.id)])),
+    [statusOptions, tasks],
+  );
+  const handleTaskMove = onStatusChange ? (task, newStatus) => onStatusChange(task.id, newStatus) : undefined;
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="p-6 bg-white rounded-lg">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold">看板視圖 - {projectId}</h2>
-          <p className="text-sm text-gray-600">拖放任務以改變狀態</p>
+      <Card className="overflow-hidden">
+        {showHeader ? <CardHeader title={`工作看板${projectId ? ` · ${projectId}` : ""}`} description={onStatusChange ? "拖曳卡片或使用卡片下方選單調整工作狀態。" : "以欄位檢視工作狀態；目前為唯讀模式。"} /> : null}
+        <div className="overflow-x-auto rounded-control p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand sm:p-5" tabIndex="0" aria-label="工作看板，可水平捲動">
+          <div className="flex min-w-max gap-4">
+            {statusOptions.map((status) => <StatusColumn key={status.id} status={status} statuses={statusOptions} tasks={groupedTasks[status.id] ?? []} selectedTaskId={selectedTaskId} onTaskClick={onTaskClick} onTaskMove={handleTaskMove} />)}
+          </div>
         </div>
-        
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          {statuses.map((status) => (
-            <StatusColumn
-              key={status}
-              status={status}
-              tasks={groupedTasks[status] || []}
-              onTaskClick={onTaskClick}
-              onTaskMove={handleTaskMove}
-            />
-          ))}
-        </div>
-      </div>
+      </Card>
     </DndProvider>
   );
 }

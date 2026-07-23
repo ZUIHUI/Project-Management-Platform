@@ -5,6 +5,10 @@
   "scripts": {
     "dev:web": "npm --workspace apps/web run dev",
     "build:web": "npm --workspace apps/web run build",
+    "build:api": "npm --workspace apps/api run build",
+    "typecheck:api": "npm --workspace apps/api run typecheck",
+    "generate:api": "npm --workspace apps/web run generate:api",
+    "check:contracts": "npm --workspace apps/api run test:architecture && npm --workspace apps/api run test:contract:gate && npm --workspace apps/web run check:api-generated && npm --workspace apps/web run typecheck",
     "lint": "npm --workspace apps/web run lint",
     "dev:api": "npm --workspace apps/api run dev"
   }

@@ -1,19 +1,26 @@
-import { useState } from 'react';
 import InsightsComponent from '../pages/InsightsPage';
+import ProjectScopeSelector from '../components/ProjectScopeSelector';
+import { useProjectViewData } from '../features/issue/useProjectViewData';
+import ProjectScopedContent from '../features/project/components/ProjectScopedContent';
+import { PageHeader } from '../components/ui';
 
 export default function InsightsPageWrapper() {
-  const [tasks, setTasks] = useState([
-    { id: '1', title: '設計 UI', status: 'Done', priority: 'high', dueDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), updatedAt: new Date() },
-    { id: '2', title: 'API 開發', status: 'In Progress', priority: 'high', dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000), createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000), updatedAt: new Date() },
-    { id: '3', title: '測試', status: 'Todo', priority: 'medium', dueDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000), createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), updatedAt: new Date() },
-    { id: '4', title: '文件撰寫', status: 'Done', priority: 'low', dueDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), createdAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000), updatedAt: new Date() },
-    { id: '5', title: '部署', status: 'In Progress', priority: 'high', dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), updatedAt: new Date() },
-  ]);
+  const view = useProjectViewData();
 
   return (
-    <InsightsComponent
-      projectId="current"
-      tasks={tasks}
-    />
+    <div className="space-y-6">
+      <PageHeader eyebrow="交付洞察" title="交付洞察" description="從進度、逾期與成員分布辨識下一個需要處理的風險。" />
+      <ProjectScopeSelector
+        projects={view.projects}
+        value={view.selectedProjectId}
+        onChange={view.setSelectedProjectId}
+        loading={view.scopeLoading}
+        error={view.error}
+        onRetry={view.retry}
+      />
+      <ProjectScopedContent loading={view.loading} error={view.error} project={view.selectedProject} loadingLabel="計算專案洞察…">
+        <InsightsComponent projectId={view.selectedProjectId} tasks={view.tasks} team={view.team} showHeader={false} />
+      </ProjectScopedContent>
+    </div>
   );
 }

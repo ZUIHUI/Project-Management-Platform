@@ -1,92 +1,102 @@
+import { useRef, useState } from "react";
+import { ArrowRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import AuthLayout from "../components/auth/AuthLayout";
+import { Alert, Button, FormField } from "../components/ui";
+import { inputClass } from "../components/ui/styles";
 import { authService } from "../features/auth/authService";
-import { PASSWORD_POLICY_TEXT, validateRegisterInput } from "../features/auth/credentialValidation";
+import { getAuthErrorDetails } from "../features/auth/authErrorMessages";
+import { PASSWORD_POLICY_TEXT, validateRegisterFields } from "../features/auth/credentialValidation";
 
 export default function Register() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
-  const [error, setError] = useState("");
+  const [form, setForm] = useState({ name: "", email: "", password: "", confirmPassword: "" });
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const fieldRefs = {
+    name: useRef(null),
+    email: useRef(null),
+    password: useRef(null),
+    confirmPassword: useRef(null),
+  };
+
+  const updateForm = (field, value) => {
+    setFormError("");
+    setFieldErrors((current) => ({
+      ...current,
+      [field]: undefined,
+      ...(field === "password" ? { confirmPassword: undefined } : {}),
+    }));
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const focusField = (field) => fieldRefs[field]?.current?.focus();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const validationError = validateRegisterInput(form.name, form.email, form.password);
-    if (validationError) {
-      setError(validationError);
+    const validationErrors = validateRegisterFields(form.name, form.email, form.password, form.confirmPassword);
+    const firstInvalidField = ["name", "email", "password", "confirmPassword"].find((field) => validationErrors[field]);
+    if (firstInvalidField) {
+      setFieldErrors(validationErrors);
+      setFormError("");
+      focusField(firstInvalidField);
       return;
     }
 
     try {
       setSubmitting(true);
-      setError("");
+      setFieldErrors({});
+      setFormError("");
       await authService.register(form.name.trim(), form.email.trim(), form.password);
-      navigate("/home");
+      navigate("/home", { replace: true });
     } catch (registerError) {
-      setError(registerError?.response?.data?.error?.message ?? "註冊失敗，請稍後再試");
+      const details = getAuthErrorDetails(registerError, "無法建立帳號，請稍後再試。");
+      if (details.field) {
+        setFieldErrors({ [details.field]: details.message });
+        focusField(details.field);
+      } else {
+        setFormError(details.message);
+      }
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white/95 p-8 shadow-xl backdrop-blur">
-        <h1 className="text-2xl font-bold text-slate-900">建立帳號</h1>
-        <p className="mt-2 text-sm text-slate-600">快速註冊後即可開始建立專案與任務。</p>
-
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-          <label className="block text-sm font-medium text-slate-700">
-            姓名
-            <input
-              type="text"
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              placeholder="王小明"
-              value={form.name}
-              onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
-            />
-          </label>
-
-          <label className="block text-sm font-medium text-slate-700">
-            Email
-            <input
-              type="email"
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              placeholder="you@company.com"
-              value={form.email}
-              onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
-            />
-          </label>
-
-          <label className="block text-sm font-medium text-slate-700">
-            密碼
-            <input
-              type="password"
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              placeholder="至少 8 碼"
-              value={form.password}
-              onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
-            />
-          </label>
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white transition hover:bg-blue-700"
-          >
-            {submitting ? "建立中..." : "註冊帳號"}
-          </button>
-          <p className="text-xs text-slate-500">{PASSWORD_POLICY_TEXT}</p>
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
-        </form>
-
-        <p className="mt-5 text-sm text-slate-600">
-          已經有帳號？
-          <Link to="/login" className="ml-1 font-semibold text-blue-700 hover:text-blue-800">
-            前往登入
-          </Link>
-        </p>
-      </div>
-    </div>
+    <AuthLayout
+      eyebrow="建立平台帳號"
+      title="建立你的帳號"
+      description="完成註冊後即可建立專案並邀請團隊開始協作。"
+      footer={<>已經有帳號？<Link to="/login" className="ml-1 inline-flex min-h-11 items-center rounded-control font-semibold text-brand hover:text-brand-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">返回登入</Link></>}
+    >
+      <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+        <FormField label="姓名" htmlFor="register-name" error={fieldErrors.name} required>
+          {({ describedBy, invalid }) => (
+            <input ref={fieldRefs.name} id="register-name" type="text" autoComplete="name" className={inputClass} placeholder="你的姓名" value={form.name} aria-describedby={describedBy} aria-invalid={invalid} onChange={(event) => updateForm("name", event.target.value)} minLength={2} maxLength={50} required />
+          )}
+        </FormField>
+        <FormField label="Email" htmlFor="register-email" error={fieldErrors.email} required>
+          {({ describedBy, invalid }) => (
+            <input ref={fieldRefs.email} id="register-email" type="email" autoComplete="email" className={inputClass} placeholder="you@company.com" value={form.email} aria-describedby={describedBy} aria-invalid={invalid} onChange={(event) => updateForm("email", event.target.value)} required />
+          )}
+        </FormField>
+        <FormField label="密碼" htmlFor="register-password" hint={PASSWORD_POLICY_TEXT} error={fieldErrors.password} required>
+          {({ describedBy, invalid }) => (
+            <input ref={fieldRefs.password} id="register-password" type="password" autoComplete="new-password" className={inputClass} placeholder="至少 8 個字元" value={form.password} aria-describedby={describedBy} aria-invalid={invalid} onChange={(event) => updateForm("password", event.target.value)} minLength={8} maxLength={64} required />
+          )}
+        </FormField>
+        <FormField label="確認密碼" htmlFor="register-confirm-password" error={fieldErrors.confirmPassword} required>
+          {({ describedBy, invalid }) => (
+            <input ref={fieldRefs.confirmPassword} id="register-confirm-password" type="password" autoComplete="new-password" className={inputClass} placeholder="再次輸入密碼" value={form.confirmPassword} aria-describedby={describedBy} aria-invalid={invalid} onChange={(event) => updateForm("confirmPassword", event.target.value)} minLength={8} maxLength={64} required />
+          )}
+        </FormField>
+        {formError ? <Alert tone="error">{formError}</Alert> : null}
+        <Button type="submit" disabled={submitting} className="w-full">
+          {submitting ? "建立中…" : "建立帳號"}
+          {!submitting ? <ArrowRight size={18} aria-hidden="true" /> : null}
+        </Button>
+      </form>
+    </AuthLayout>
   );
 }

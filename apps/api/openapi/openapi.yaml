@@ -21,6 +21,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OkHealthResponse'
+  /health/ready:
+    get:
+      summary: Database readiness health check
+      security: []
+      responses:
+        '200':
+          description: Ready to serve database-backed requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadyHealthResponse'
+        '503':
+          description: Database is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /openapi.yaml:
     get:
       summary: OpenAPI spec document
@@ -111,6 +128,21 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
+    delete:
+      summary: Delete project
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Deleted project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /projects/{projectId}/timeline:
     get:
       summary: Get project timeline projection
@@ -234,6 +266,501 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/LegacyTask'
+  /register:
+    post:
+      summary: Register a self-service project creator
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /login:
+    post:
+      summary: Login with email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /refresh:
+    post:
+      summary: Exchange a refresh token for an access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '200':
+          description: Refreshed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accessToken]
+                properties:
+                  accessToken: { type: string }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /me:
+    get:
+      summary: Get the current user profile
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      summary: Update the current user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email]
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /change-password:
+    post:
+      summary: Change the current user password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string, format: password }
+                newPassword: { type: string, format: password }
+      responses:
+        '200':
+          description: Password changed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /projects/{projectId}/archive:
+    post:
+      summary: Archive a project
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Archived project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /projects/{projectId}/members:
+    post:
+      summary: Add or update a project member
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, role]
+              properties:
+                userId: { type: string }
+                role: { type: string, enum: [viewer, member, project_admin] }
+      responses:
+        '201':
+          description: Project member
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ProjectMember'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /projects/{projectId}/milestones:
+    post:
+      summary: Create a project milestone
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                dueAt: { type: [string, 'null'], format: date-time }
+      responses:
+        '201':
+          description: Created milestone
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Milestone'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /projects/{projectId}/sprints:
+    post:
+      summary: Create a project sprint
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                goal: { type: string }
+                startAt: { type: string, format: date-time }
+                endAt: { type: [string, 'null'], format: date-time }
+      responses:
+        '201':
+          description: Created sprint
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Sprint'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /workflows/statuses:
+    get:
+      summary: List workflow statuses
+      responses:
+        '200':
+          description: Workflow statuses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WorkflowStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /projects/{projectId}/board:
+    get:
+      summary: Get project board columns
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Board columns
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BoardColumn'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /issues/{issueId}:
+    get:
+      summary: Get issue detail
+      parameters:
+        - $ref: '#/components/parameters/IssueId'
+      responses:
+        '200':
+          description: Issue detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      summary: Update issue fields
+      parameters:
+        - $ref: '#/components/parameters/IssueId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateIssueRequest'
+      responses:
+        '200':
+          description: Updated issue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /issues/{issueId}/assignee:
+    patch:
+      summary: Assign an issue
+      parameters:
+        - $ref: '#/components/parameters/IssueId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [assigneeId]
+              properties:
+                assigneeId: { type: [string, 'null'] }
+      responses:
+        '200':
+          description: Assigned issue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /issues/{issueId}/comments:
+    get:
+      summary: List issue comments
+      parameters:
+        - $ref: '#/components/parameters/IssueId'
+      responses:
+        '200':
+          description: Issue comments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Comment'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      summary: Create an issue comment
+      parameters:
+        - $ref: '#/components/parameters/IssueId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string }
+      responses:
+        '201':
+          description: Created comment
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Comment'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /activity-logs:
+    get:
+      summary: List activity logs
+      responses:
+        '200':
+          description: Activity logs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ActivityLog'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /issues/{issueId}/activity:
+    get:
+      summary: List activity for one issue
+      parameters:
+        - $ref: '#/components/parameters/IssueId'
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+      responses:
+        '200':
+          description: Issue activity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ActivityLog'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /dashboard:
+    get:
+      summary: Get dashboard projection
+      responses:
+        '200':
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /notifications:
+    get:
+      summary: List notifications for the current user
+      responses:
+        '200':
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Notification'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      summary: Create a notification for self; platform admins may target another user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId: { type: string }
+                type: { type: string }
+                message: { type: string }
+                payload: {}
+              anyOf:
+                - required: [message]
+                - required: [payload]
+      responses:
+        '201':
+          description: Created notification
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Notification'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /notifications/{notificationId}/read:
+    patch:
+      summary: Mark a notification as read
+      parameters:
+        - in: path
+          name: notificationId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Updated notification
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Notification'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 components:
   securitySchemes:
     bearerAuth:
@@ -286,14 +813,195 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorResponse' }
   schemas:
-    OkHealthResponse:
+    RegisterRequest:
+      type: object
+      required: [name, email, password]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 2 }
+        email: { type: string, format: email }
+        password: { type: string, format: password, minLength: 8, writeOnly: true }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      additionalProperties: false
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, format: password, writeOnly: true }
+    AuthUser:
+      type: object
+      required: [id, name, role]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [viewer, member, project_admin, org_admin, owner] }
+    AuthSession:
+      type: object
+      required: [accessToken, refreshToken, user]
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        user:
+          $ref: '#/components/schemas/AuthUser'
+    UserProfileResponse:
+      type: object
+      required: [user]
+      properties:
+        user:
+          $ref: '#/components/schemas/AuthUser'
+        passwordPolicy: { type: string }
+    ProjectMember:
+      type: object
+      required: [projectId, userId, role, name, email]
+      properties:
+        projectId: { type: string }
+        userId: { type: string }
+        role: { type: string, enum: [viewer, member, project_admin] }
+        name: { type: string }
+        email: { type: string, format: email }
+    Milestone:
+      type: object
+      required: [id, projectId, name, status]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        name: { type: string }
+        dueAt: { type: [string, 'null'], format: date-time }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+    Sprint:
+      type: object
+      required: [id, projectId, name, status]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        name: { type: string }
+        goal: { type: string }
+        startAt: { type: string, format: date-time }
+        endAt: { type: [string, 'null'], format: date-time }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+    WorkflowStatus:
+      type: object
+      required: [id, name, order]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        order: { type: integer }
+    BoardColumn:
+      allOf:
+        - $ref: '#/components/schemas/WorkflowStatus'
+        - type: object
+          required: [issues]
+          properties:
+            issues:
+              type: array
+              items:
+                $ref: '#/components/schemas/Issue'
+    UpdateIssueRequest:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: string }
+        priority: { type: string, enum: [low, medium, high] }
+        assigneeId: { type: [string, 'null'] }
+        sprintId: { type: [string, 'null'] }
+        milestoneId: { type: [string, 'null'] }
+        dueAt: { type: [string, 'null'], format: date-time }
+        dueDate:
+          description: Deprecated compatibility alias of dueAt
+          type: [string, 'null']
+          format: date-time
+    Comment:
+      type: object
+      required: [id, issueId, body, createdAt]
+      properties:
+        id: { type: string }
+        issueId: { type: string }
+        authorId: { type: [string, 'null'] }
+        authorName: { type: string }
+        authorEmail: { type: [string, 'null'] }
+        body: { type: string }
+        createdAt: { type: string, format: date-time }
+        mentions:
+          type: array
+          items: { type: string }
+    ActivityLog:
+      type: object
+      required: [id, issueId, action, createdAt]
+      properties:
+        id: { type: string }
+        actorId: { type: [string, 'null'] }
+        actorName: { type: string }
+        actorEmail: { type: [string, 'null'] }
+        issueId: { type: string }
+        issueNumber: { type: integer }
+        issueTitle: { type: string }
+        projectId: { type: string }
+        projectKey: { type: string }
+        projectName: { type: string }
+        action: { type: string }
+        before: { type: [string, 'null'] }
+        after: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+    Notification:
+      type: object
+      required: [id, userId, type, message, read, createdAt]
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        type: { type: string }
+        message: { type: string }
+        payload: {}
+        read: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    DashboardResponse:
       type: object
       properties:
         data:
           type: object
           properties:
-            status: { type: string, example: ok }
-            uptime: { type: number }
+            totals:
+              type: object
+              additionalProperties: { type: integer }
+            statusBreakdown:
+              type: array
+              items:
+                type: object
+                required: [statusId, statusName, count]
+                properties:
+                  statusId: { type: string }
+                  statusName: { type: string }
+                  count: { type: integer }
+            openIssues:
+              type: array
+              items:
+                $ref: '#/components/schemas/DashboardIssue'
+            overdueIssues:
+              type: array
+              items:
+                $ref: '#/components/schemas/DashboardIssue'
+    OkHealthResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [status, timestamp]
+          properties:
+            status: { type: string, enum: [ok] }
+            timestamp: { type: string, format: date-time }
+    ReadyHealthResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [status, timestamp]
+          properties:
+            status: { type: string, enum: [ready] }
+            timestamp: { type: string, format: date-time }
     AuthErrorResponse:
       type: object
       properties:
@@ -309,6 +1017,7 @@ components:
             status: { type: integer }
     Project:
       type: object
+      required: [id, key, name, description, ownerId, status, createdAt, updatedAt]
       properties:
         id: { type: string }
         key: { type: string }
@@ -316,14 +1025,12 @@ components:
         description: { type: string }
         ownerId: { type: [string, 'null'] }
         status: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
         members:
           type: array
           items:
-            type: object
-            properties:
-              projectId: { type: string }
-              userId: { type: string }
-              role: { type: string }
+            $ref: '#/components/schemas/ProjectMember'
         milestones:
           type: array
           items:
@@ -408,6 +1115,7 @@ components:
         status: { type: string }
     Issue:
       type: object
+      required: [id, number, projectId, title, description, priority, statusId, dueAt, createdAt, updatedAt]
       properties:
         id: { type: string }
         number: { type: integer }
@@ -419,6 +1127,16 @@ components:
         assigneeId: { type: [string, 'null'] }
         reporterId: { type: [string, 'null'] }
         dueAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    DashboardIssue:
+      allOf:
+        - $ref: '#/components/schemas/Issue'
+        - type: object
+          required: [projectKey, projectName]
+          properties:
+            projectKey: { type: string }
+            projectName: { type: string }
     CreateIssueRequest:
       type: object
       required: [title]

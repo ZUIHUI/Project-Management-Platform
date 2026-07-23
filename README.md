@@ -1,94 +1,65 @@
-# Project Management Platform / 專案管理平台
+# Project Management Platform
 
-## English
+TypeScript、OpenAPI-first 的模組化單體專案：React/Vite 前端、Express API、Prisma 與 PostgreSQL，集中在 npm workspaces monorepo。
 
-This repository now follows a monorepo structure with separate frontend and backend applications under the `apps/` directory.
+## 目錄
 
-- `apps/web` contains a React client powered by Vite and Tailwind CSS.
-- `apps/api` hosts a minimal Node.js API with a `/health` endpoint.
-- The legacy .NET 9 example remains under `ProjectManagementAPI` for reference.
-- See [Architecture Vision](docs/architecture-vision.md) for the long-term platform direction.
+- `apps/web`：React feature modules 與 OpenAPI 生成型別。
+- `apps/api`：TypeScript API，依 `domain → application → infrastructure/interfaces` 分層。
+- `apps/api/openapi/openapi.yaml`：HTTP 契約唯一來源。
+- `ProjectManagementAPI`：保留的 .NET 參考範例，不是目前 runtime。
+- [架構基線](docs/architecture.md)
+- [部署策略](DEPLOYMENT.md)
 
-### Requirements
-- Node.js 18+
-- (optional) .NET 9 SDK for the legacy API
+## 本機開發
 
-### Getting Started
-1. Run the frontend development server using `npm run dev:web`.
-2. Start the Node.js API with `npm run dev:api` (serves `http://localhost:3000/api/v1/health`).
-3. Optionally run the legacy .NET API by navigating to `ProjectManagementAPI` and running `dotnet run`.
-
-### Build
-Use `npm run build:web` to create a production build of the frontend.
-
-### Deployment / 部署
-
-This project supports multiple deployment options. See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
-
-**Quick Deploy Options:**
+需求：Node.js 20+ 與 PostgreSQL。首次啟動：
 
 ```bash
-# Vercel + Neon PostgreSQL (Recommended for personal projects)
-./deploy.sh vercel
-
-# Complete setup guide: VERCEL-NEON-DEPLOY.md
+npm ci
+export DATABASE_URL=postgresql://user:password@localhost:5432/project_management
+npm --workspace apps/api run db:generate
+npm --workspace apps/api run db:migrate:deploy
+npm --workspace apps/api run db:seed
+npm run dev:api
 ```
 
-**Supported Platforms:**
-- ✅ Vercel (Frontend + API)
-- ✅ Railway (Full-stack)
-- ✅ Render (Web services)
-- ✅ Docker (Containerized)
-- ✅ VPS (Manual setup)
+另一個 terminal 啟動前端：
 
-### GitHub Pages Demo
-The web app can be deployed to GitHub Pages via `.github/workflows/deploy-github-pages.yml`.
-- Expected URL format: `https://<github-username>.github.io/Project-Management-Platform/`
-- Production build runs in demo mode (`VITE_DEMO_MODE=true`) so the site works without backend hosting.
+```bash
+npm run dev:web
+```
 
-### API Documentation
-- Backend API docs (包含資料庫架構與完整路由清單): `apps/api/API.md`
+- Web：`http://localhost:5173`
+- API liveness：`http://localhost:3000/api/v1/health`
+- API readiness（包含 PostgreSQL）：`http://localhost:3000/api/v1/health/ready`
+- OpenAPI：`http://localhost:3000/api/v1/openapi.yaml`
 
-### Quick API usage
-1. Start backend: `cd apps/api && npm run dev`
-2. Register: `curl -X POST http://localhost:3000/api/v1/register -H 'Content-Type: application/json' -d '{"name":"Owner","email":"owner@example.com","password":"password"}'`
-3. Login: `curl -X POST http://localhost:3000/api/v1/login -H 'Content-Type: application/json' -d '{"email":"owner@example.com","password":"password"}'`
-4. Use returned `accessToken` for protected endpoints:
-   - `GET http://localhost:3000/api/v1/projects` with header `Authorization: Bearer <token>`
+也可在有 Docker 的環境執行 `docker compose up --build`。
 
+## 驗證
 
----
+```bash
+npm --workspace apps/api run typecheck
+npm --workspace apps/api run test:contract:gate
+npm --workspace apps/web run check:api-generated
+npm --workspace apps/web run typecheck
+npm --workspace apps/web run lint
+npm --workspace apps/web run build
+```
 
-## 中文
+Database-backed verification uses a protected runner. The database name must contain a standalone `test` marker; production mode and non-PostgreSQL URLs are rejected before Prisma runs.
 
-本倉庫採用 monorepo 結構，前後端程式碼分別位於 `apps/` 目錄下：
+```bash
+NODE_ENV=test \
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/project_management_test \
+npm --workspace apps/api run test:db
+```
 
-- `apps/web`：以 Vite、React 及 Tailwind CSS 建置的前端。
-- `apps/api`：提供 `/health` 端點的 Node.js 後端。
-- 舊的 .NET 9 範例仍保留於 `ProjectManagementAPI` 目錄供參考。
-- 可參考 [Architecture Vision](docs/architecture-vision.md) 了解長期平台規劃。
+`test:db` 只會對通過安全檢查的隔離 test database 執行 migration deploy 與 seed，再依序執行 contract、integration、smoke tests；不會執行 reset 或 drop。
 
-### 需求環境
-- Node.js 18 以上
-- （選用）.NET 9 SDK（啟動舊版 API）
+## API 與安全邊界
 
-### 快速開始
-1. 執行 `npm run dev:web` 啟動前端開發伺服器。
-2. 執行 `npm run dev:api` 啟動 Node.js API（預設提供 `http://localhost:3000/api/v1/health`）。
-3. 若需啟動舊版 .NET API，請進入 `ProjectManagementAPI` 並執行 `dotnet run`。
+業務路由需要 Bearer token。伺服器不接受 `x-role`，註冊者也不能指定角色；每個受保護請求會從資料庫載入目前角色與 `tokenVersion`。Project membership 同時限制 project、issue、dashboard、activity 與 notification 資料範圍。
 
-### 建置
-若需產生前端正式版本，可執行 `npm run build:web`。
-
-
-### 如何開啟此專案（本機）
-1. 安裝 Node.js 18+。
-2. 在專案根目錄執行 `npm ci` 安裝所有 workspace 依賴。
-3. 啟動後端 API：`npm run dev:api`（預設 `http://localhost:3000/api/v1/health`）。
-4. 另開一個終端啟動前端：`npm run dev:web`。
-5. 於瀏覽器開啟 Vite 顯示網址（通常是 `http://localhost:5173`）。
-
-### 快速檢查
-- API smoke test：`npm --workspace apps/api test`
-- 前端建置：`npm --workspace apps/web run build`
-
+修改 OpenAPI 後執行 `npm run generate:api`，並提交更新後的 `apps/web/src/shared/api/schema.d.ts`。
