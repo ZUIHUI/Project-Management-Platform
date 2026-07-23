@@ -59,6 +59,7 @@ export default function Tasks({ viewMode = "list" }) {
   );
 
   const openCreateDialog = () => {
+    if (!workspace.canUseWorkflow) return;
     workspace.clearCreateError();
     setCreateOpen(true);
   };
@@ -94,7 +95,7 @@ export default function Tasks({ viewMode = "list" }) {
         eyebrow="工作管理"
         title={viewMode === "board" ? "Issue 看板" : "Issue 清單"}
         description="從建立、指派到狀態流轉，在同一個工作區完成並保留討論脈絡。"
-        actions={workspace.canModify ? (
+        actions={workspace.canUseWorkflow ? (
           <Button onClick={openCreateDialog}><Plus size={18} aria-hidden="true" />建立 Issue</Button>
         ) : null}
       />
@@ -107,6 +108,14 @@ export default function Tasks({ viewMode = "list" }) {
       ) : null}
       {workspace.notice ? <Alert tone="success">{workspace.notice}</Alert> : null}
       {routeState.routeNotice ? <Alert tone="info">{routeState.routeNotice}</Alert> : null}
+      {workspace.selectedProject && !workspace.workflowReady ? (
+        <Alert tone="error" title="工作流程尚未就緒">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span>平台正在準備標準工作流程；目前可查看專案，但暫時無法建立或移動 Issue。</span>
+            <Button variant="outline" size="sm" onClick={workspace.reloadWorkspace}>重新檢查</Button>
+          </div>
+        </Alert>
+      ) : null}
       {workspace.selectedProject?.status === "archived" ? (
         <Alert tone="info" title="唯讀模式">此專案已封存；Issue、留言、指派與狀態仍可查看，但不再接受更新。</Alert>
       ) : null}
@@ -150,7 +159,7 @@ export default function Tasks({ viewMode = "list" }) {
               statusOptions={statusOptions}
               selectedTaskId={workspace.selectedIssueId}
               onTaskClick={(task) => routeState.selectIssue(task.id)}
-              onStatusChange={workspace.canModify ? workspace.transitionIssueStatus : undefined}
+              onStatusChange={workspace.canUseWorkflow ? workspace.transitionIssueStatus : undefined}
               showHeader={false}
             />
           ) : (
@@ -159,7 +168,7 @@ export default function Tasks({ viewMode = "list" }) {
               allIssueCount={workspace.issues.length}
               statuses={workspace.statuses}
               selectedIssueId={workspace.selectedIssueId}
-              canModify={workspace.canModify}
+              canModify={workspace.canUseWorkflow}
               onSelect={routeState.selectIssue}
               onMove={workspace.moveIssue}
               onCreate={openCreateDialog}

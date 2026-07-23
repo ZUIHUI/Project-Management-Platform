@@ -15,7 +15,23 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  configuration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report deployment configuration
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+        shell: bash
+        run: |
+          if [ -n "$VITE_API_URL" ]; then
+            echo "GitHub Pages deployment is configured."
+          else
+            echo "::notice::Skipping GitHub Pages deployment until the repository variable VITE_API_URL is configured."
+          fi
+
   build:
+    needs: configuration
+    if: ${{ vars.VITE_API_URL != '' }}
     runs-on: ubuntu-latest
     env:
       VITE_API_URL: ${{ vars.VITE_API_URL }}
@@ -31,14 +47,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Require formal API URL
-        shell: bash
-        run: |
-          if [ -z "$VITE_API_URL" ]; then
-            echo "::error::Set the repository variable VITE_API_URL before deploying the platform client."
-            exit 1
-          fi
 
       - name: Build formal platform client
         run: npm --workspace apps/web run build

@@ -4,6 +4,8 @@ const STANDARD_STATUS_PRESENTATION = Object.freeze({
   done: Object.freeze({ label: "已完成", tone: "success" }),
 });
 
+const CORE_WORKFLOW_STATUS_ORDER = Object.freeze(["todo", "doing", "done"]);
+
 const STATUS_ALIASES = Object.freeze({
   todo: "todo",
   "to do": "todo",
@@ -34,6 +36,12 @@ export const getCanonicalWorkflowStatusId = (status) => {
   const value = `${status ?? ""}`.trim().toLocaleLowerCase("en-US").replace(/[-_]+/g, " ");
   return STATUS_ALIASES[value] ?? null;
 };
+
+export const isCoreWorkflowReady = (statuses = []) => (
+  CORE_WORKFLOW_STATUS_ORDER.every((id, index) => (
+    statuses.some((status) => status?.id === id && status?.order === index + 1)
+  ))
+);
 
 export const getWorkflowStatusLabel = (status, fallbackName) => {
   const { id, name } = asStatusParts(status, fallbackName);

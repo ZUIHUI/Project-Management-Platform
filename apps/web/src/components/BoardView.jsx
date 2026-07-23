@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { CalendarClock, GripVertical, Inbox } from "lucide-react";
+import { CalendarClock, Columns3, GripVertical, Inbox } from "lucide-react";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { Badge, Card, CardHeader, EmptyState } from "./ui";
@@ -89,6 +89,18 @@ export default function BoardView({ projectId, tasks = [], statusOptions = DEFAU
     [statusOptions, tasks],
   );
   const handleTaskMove = onStatusChange ? (task, newStatus) => onStatusChange(task.id, newStatus) : undefined;
+
+  if (!statusOptions.length) {
+    return (
+      <Card>
+        <EmptyState
+          icon={Columns3}
+          title="工作流程尚未就緒"
+          description="平台正在準備看板欄位；稍後重新整理即可繼續。"
+        />
+      </Card>
+    );
+  }
 
   return (
     <DndProvider backend={HTML5Backend}>

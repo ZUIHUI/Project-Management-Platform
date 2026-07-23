@@ -18,12 +18,12 @@ export default function IssueWorkspaceToolbar({
 }) {
   return (
     <Card className="p-4 sm:p-5">
-      <div className="mb-4 flex flex-col gap-3 border-b border-line-soft pb-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-4 flex flex-col gap-3 border-b border-line-soft pb-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <p className="text-sm font-semibold text-ink">工作範圍</p>
           <p className="mt-1 text-xs text-muted">切換專案或檢視方式，不離開目前工作流程。</p>
         </div>
-        <nav aria-label="Issue 檢視模式" className="grid grid-cols-2 gap-1 rounded-pill bg-surface-strong p-1 sm:flex">
+        <nav aria-label="Issue 檢視模式" className="grid w-full grid-cols-2 gap-1 rounded-pill bg-surface-strong p-1 sm:w-auto xl:flex">
           <Button
             as={Link}
             to={listHref}

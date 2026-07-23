@@ -5,7 +5,7 @@
 - Workflow：`.github/workflows/deploy-github-pages.yml`
 - 前端打包 base path 自動依 `GITHUB_REPOSITORY` 設定（`apps/web/vite.config.js`）
 - production client 只連接正式 OpenAPI API，不再打包 mock database 或示範帳密
-- Repository variable `VITE_API_URL` 必須設定為可公開存取的完整 API base URL，例如 `https://api.example.com/api/v1`；缺少時 workflow 會停止建置
+- Repository variable `VITE_API_URL` 必須設定為可公開存取的完整 API base URL，例如 `https://api.example.com/api/v1`；缺少時 workflow 會以 notice 略過 Pages 建置，避免把尚未啟用的次要部署管道誤報為產品失敗
 
 ## 預期網址
 

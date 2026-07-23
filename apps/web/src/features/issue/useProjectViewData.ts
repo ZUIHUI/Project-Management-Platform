@@ -4,7 +4,7 @@ import { canAccessProject, projectService } from "../project";
 import { buildProjectMemberLabelMap } from "../project/projectMemberPresentation";
 import { isIssueCollectionPending } from "./issueRouteState.js";
 import { issueService } from "./issueService";
-import { buildWorkflowStatusOptions } from "./workflowPresentation.js";
+import { buildWorkflowStatusOptions, isCoreWorkflowReady } from "./workflowPresentation.js";
 import type { components } from "../../shared/api/schema";
 
 type Project = components["schemas"]["Project"];
@@ -145,6 +145,7 @@ export const useProjectViewData = (fixedProjectId?: string | null) => {
   }, [issues, selectedProject?.members, statuses]);
 
   const statusOptions = useMemo(() => buildWorkflowStatusOptions(statuses), [statuses]);
+  const workflowReady = useMemo(() => isCoreWorkflowReady(statuses), [statuses]);
 
   const team = useMemo<ProjectTeamMemberView[]>(
     () =>
@@ -213,6 +214,7 @@ export const useProjectViewData = (fixedProjectId?: string | null) => {
     projects,
     statuses,
     statusOptions,
+    workflowReady,
     selectedProject,
     selectedProjectId,
     setSelectedProjectId,
@@ -223,7 +225,7 @@ export const useProjectViewData = (fixedProjectId?: string | null) => {
     scopeLoading: loadingProjects,
     error: projectError || issueError,
     reload: () => loadIssues(selectedProjectId),
-    retry: projectError
+    retry: projectError || !workflowReady
       ? () => setScopeRetryNonce((current) => current + 1)
       : () => loadIssues(selectedProjectId),
     transitionTask,

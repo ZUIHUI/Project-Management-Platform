@@ -16,7 +16,9 @@ export default function ProjectDashboard() {
   const view = useProjectViewData(projectId);
   const selection = useProjectTaskSelection(view.tasks, view.selectedProjectId);
   const projectArchived = view.selectedProject?.status === "archived";
-  const canEditProject = canAccessProject(view.selectedProject, "write") && !projectArchived;
+  const canEditProject = view.workflowReady
+    && canAccessProject(view.selectedProject, "write")
+    && !projectArchived;
   const projectTitle = view.selectedProject?.name ?? (projectId ? `專案 ${projectId}` : "專案工作區");
 
   return (
@@ -60,7 +62,16 @@ export default function ProjectDashboard() {
         </Alert>
       ) : null}
 
-      {view.selectedProject && !canEditProject ? (
+      {view.selectedProject && !view.workflowReady ? (
+        <Alert tone="error" title="工作流程尚未就緒">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span>平台正在準備標準工作流程；專案內容仍可查看，但暫時無法建立或移動 Issue。</span>
+            <Button variant="outline" size="sm" onClick={view.retry}>重新檢查</Button>
+          </div>
+        </Alert>
+      ) : null}
+
+      {view.selectedProject && view.workflowReady && !canEditProject ? (
         <Alert tone="info" title="唯讀模式">
           {projectArchived
             ? "此專案已封存，可保留檢視但不再接受交付內容更新。"

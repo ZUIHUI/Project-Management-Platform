@@ -10,7 +10,7 @@
     "check:api-generated": "node scripts/generate-api.mjs --check",
     "lint": "eslint .",
     "test:auth": "node --test scripts/auth-transport.test.mjs scripts/credential-validation.test.mjs",
-    "test:ui-state": "node --test scripts/api-error-presentation.test.mjs scripts/issue-workspace-state.test.mjs scripts/project-workspace-state.test.mjs scripts/project-action-error-presentation.test.mjs scripts/workspace-access.test.mjs scripts/workspace-shell-state.test.mjs scripts/workstream-presentation.test.mjs scripts/workflow-presentation.test.mjs scripts/insight-workload-metrics.test.mjs",
+    "test:ui-state": "tsx --test scripts/api-error-presentation.test.mjs scripts/issue-workspace-state.test.mjs scripts/project-workspace-state.test.mjs scripts/project-action-error-presentation.test.mjs scripts/workspace-access.test.mjs scripts/workspace-shell-state.test.mjs scripts/workstream-presentation.test.mjs scripts/workflow-presentation.test.mjs scripts/insight-workload-metrics.test.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },
@@ -43,6 +43,7 @@
     "openapi-typescript": "^7.13.0",
     "postcss": "^8.5.4",
     "tailwindcss": "^3.4.1",
+    "tsx": "^4.23.1",
     "vite": "^6.3.5"
   },
   "main": "index.js",

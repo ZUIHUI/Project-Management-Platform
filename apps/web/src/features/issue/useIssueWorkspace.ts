@@ -4,7 +4,7 @@ import { getApiErrorMessage } from "../../shared/api/apiErrorPresentation.js";
 import { createLatestRequestGuard } from "../../shared/latestRequestGuard.js";
 import { canAccessProject, projectService } from "../project";
 import { issueService, type IssuePayload } from "./issueService";
-import { getWorkflowStatusLabel } from "./workflowPresentation.js";
+import { getWorkflowStatusLabel, isCoreWorkflowReady } from "./workflowPresentation.js";
 import type { components } from "../../shared/api/schema";
 
 type Project = components["schemas"]["Project"];
@@ -38,6 +38,7 @@ export const useIssueWorkspace = (routeProjectId?: string) => {
   const [detailError, setDetailError] = useState("");
   const [notice, setNotice] = useState("");
   const [detailNotice, setDetailNotice] = useState("");
+  const [workspaceRetryNonce, setWorkspaceRetryNonce] = useState(0);
   const projectIdRef = useRef(projectId);
   const selectedIssueIdRef = useRef(selectedIssueId);
   const issuesRequestGuardRef = useRef(createLatestRequestGuard());
@@ -91,7 +92,7 @@ export const useIssueWorkspace = (routeProjectId?: string) => {
     return () => {
       active = false;
     };
-  }, [routeProjectId]);
+  }, [routeProjectId, workspaceRetryNonce]);
 
   const loadIssues = useCallback(async (selectedProjectId: string) => {
     const requestToken = issuesRequestGuardRef.current.begin(selectedProjectId);
@@ -137,6 +138,8 @@ export const useIssueWorkspace = (routeProjectId?: string) => {
   const canModify = Boolean(
     selectedProject && selectedProject.status !== "archived" && canAccessProject(selectedProject, "write"),
   );
+  const workflowReady = useMemo(() => isCoreWorkflowReady(statuses), [statuses]);
+  const canUseWorkflow = canModify && workflowReady;
 
   const loadIssueDetails = useCallback(async (issueId: string) => {
     const requestToken = detailRequestGuardRef.current.begin(issueId);
@@ -173,7 +176,7 @@ export const useIssueWorkspace = (routeProjectId?: string) => {
   }, [loadIssueDetails, selectedIssueId]);
 
   const createIssue = useCallback(async (draft: IssueDraft) => {
-    if (!projectId || !draft.title.trim() || !canModify) return false;
+    if (!projectId || !draft.title.trim() || !canUseWorkflow) return false;
     setCreating(true);
     setCreateError("");
     setNotice("");
@@ -196,10 +199,10 @@ export const useIssueWorkspace = (routeProjectId?: string) => {
     } finally {
       setCreating(false);
     }
-  }, [canModify, projectId]);
+  }, [canUseWorkflow, projectId]);
 
   const transitionIssue = useCallback(async (issueId: string, nextStatusId: string) => {
-    if (!canModify) return false;
+    if (!canUseWorkflow) return false;
     const issue = issues.find((item) => item.id === issueId);
     const currentStatus = statuses.find((status) => status.id === issue?.statusId);
     const nextStatus = statuses.find((status) => status.id === nextStatusId);
@@ -227,7 +230,7 @@ export const useIssueWorkspace = (routeProjectId?: string) => {
       await loadIssues(projectId);
       return false;
     }
-  }, [canModify, issues, loadIssues, projectId, statuses]);
+  }, [canUseWorkflow, issues, loadIssues, projectId, statuses]);
 
   const moveIssue = useCallback(async (issueId: string, direction: number) => {
     const issue = issues.find((item) => item.id === issueId);
@@ -302,6 +305,10 @@ export const useIssueWorkspace = (routeProjectId?: string) => {
     setDetailNotice("");
   }, []);
   const reloadIssues = useCallback(() => loadIssues(projectId), [loadIssues, projectId]);
+  const reloadWorkspace = useCallback(
+    () => setWorkspaceRetryNonce((current) => current + 1),
+    [],
+  );
   const reloadDetails = useCallback(
     () => loadIssueDetails(selectedIssueId),
     [loadIssueDetails, selectedIssueId],
@@ -320,6 +327,8 @@ export const useIssueWorkspace = (routeProjectId?: string) => {
     comments,
     activityLogs,
     canModify,
+    workflowReady,
+    canUseWorkflow,
     loading,
     issuesLoading,
     issuesResolvedProjectId,
@@ -335,6 +344,7 @@ export const useIssueWorkspace = (routeProjectId?: string) => {
     clearCreateError,
     clearDetailFeedback,
     reloadIssues,
+    reloadWorkspace,
     reloadDetails,
     createIssue,
     moveIssue,

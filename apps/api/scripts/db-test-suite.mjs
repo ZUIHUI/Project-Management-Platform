@@ -29,6 +29,7 @@ const run = (label, args, extraEnv = {}) =>
 console.log(`Running isolated database tests against ${parsedUrl.hostname}/${databaseName}`);
 await run('Generate Prisma client', [prismaCli, 'generate']);
 await run('Apply database migrations', [prismaCli, 'migrate', 'deploy']);
+await run('Verify core workflow reference data', ['scripts/reference-data.mjs']);
 await run('Seed test fixtures', [tsxCli, 'seed.ts']);
 await run('Contract runtime tests', ['scripts/contract.mjs'], { CONTRACT_TEST_PORT: '3101' });
 await run('Authorization integration tests', ['scripts/integration.mjs'], { INTEGRATION_TEST_PORT: '3102' });

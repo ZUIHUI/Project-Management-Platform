@@ -32,14 +32,14 @@ export function IconButton({ label, children, className, ...props }) {
 
 export function PageHeader({ eyebrow, title, description, actions, children, className }) {
   return (
-    <header className={cn("flex flex-col gap-5 border-b border-line-soft pb-6 sm:flex-row sm:items-end sm:justify-between", className)}>
+    <header className={cn("flex flex-col gap-5 border-b border-line-soft pb-6 xl:flex-row xl:items-end xl:justify-between", className)}>
       <div className="min-w-0 max-w-3xl">
         {eyebrow ? <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted">{eyebrow}</p> : null}
         <h1 className="font-display text-3xl font-normal tracking-tight text-ink sm:text-4xl">{title}</h1>
         {description ? <p className="mt-2 max-w-2xl text-sm leading-6 text-body sm:text-base">{description}</p> : null}
         {children}
       </div>
-      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
+      {actions ? <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto">{actions}</div> : null}
     </header>
   );
 }

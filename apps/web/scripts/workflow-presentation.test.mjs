@@ -6,6 +6,7 @@ import {
   getIssuePriorityPresentation,
   getWorkflowStatusLabel,
   getWorkflowStatusTone,
+  isCoreWorkflowReady,
 } from "../src/features/issue/workflowPresentation.js";
 
 test("standard workflow labels are localized without changing stable IDs", () => {
@@ -37,4 +38,21 @@ test("legacy display names normalize only in the presentation layer", () => {
     shortLabel: "高",
     tone: "danger",
   });
+});
+
+test("core workflow readiness requires every canonical status in contract order", () => {
+  assert.equal(isCoreWorkflowReady([
+    { id: "todo", order: 1 },
+    { id: "doing", order: 2 },
+    { id: "done", order: 3 },
+  ]), true);
+  assert.equal(isCoreWorkflowReady([
+    { id: "todo", order: 1 },
+    { id: "done", order: 2 },
+  ]), false);
+  assert.equal(isCoreWorkflowReady([
+    { id: "todo", order: 2 },
+    { id: "doing", order: 1 },
+    { id: "done", order: 3 },
+  ]), false);
 });

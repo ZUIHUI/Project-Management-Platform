@@ -11,7 +11,7 @@ router.get("/health", (_req, res) => {
 router.get('/health/ready', async (_req, res) => {
   const result = await healthService.readiness();
   if (!result.ready) {
-    return fail(res, 503, 'Service is not ready', undefined, 'DATABASE_UNAVAILABLE');
+    return fail(res, 503, 'Service is not ready', undefined, result.code);
   }
 
   return res.json({ data: { status: 'ready', timestamp: new Date().toISOString() } });
