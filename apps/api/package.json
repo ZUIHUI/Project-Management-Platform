@@ -17,6 +17,7 @@
     "test:contract:gate": "node scripts/contract-gate.mjs",
     "test:architecture": "node scripts/architecture-gate.mjs",
     "test:integration": "node scripts/integration.mjs",
+    "test:unit": "tsx --test scripts/issue-update.test.mjs",
     "test:db": "node scripts/db-test-suite.mjs",
     "test:db:guard": "node scripts/database-test-guard.test.mjs"
   },

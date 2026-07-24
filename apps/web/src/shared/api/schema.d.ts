@@ -772,6 +772,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{projectId}/member-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search users who can be added to a project */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Optional name or email search text */
+                    q?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    projectId: components["parameters"]["ProjectId"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Users who are not already project members */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: components["schemas"]["MemberCandidate"][];
+                        };
+                    };
+                };
+                403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{projectId}/members": {
         parameters: {
             query?: never;
@@ -1619,6 +1665,12 @@ export interface components {
                 id?: string;
                 name?: string;
             }[];
+        };
+        MemberCandidate: {
+            id: string;
+            name: string;
+            /** Format: email */
+            email: string;
         };
         ProjectResponse: {
             data?: components["schemas"]["Project"];

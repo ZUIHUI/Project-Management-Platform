@@ -85,7 +85,7 @@ flowchart TD
 - `pages/SprintManagement.jsx` 與 `pages/MilestoneManagement.jsx` 是薄 route wrapper；兩者共用 `ProjectPlanningWorkspace` 與 `useProjectPlanningWorkspace`。
 - 完整規劃查詢與建立結果必須綁定 `projectId + kind` 範圍；切換專案、Sprint／里程碑或離開頁面後，過期回應不得更新目前清單、錯誤、成功提示或 saving 狀態。
 - 快速規劃與完整管理共用 `ProjectPlanningDialog`；完整 Sprint 管理可補開始／結束日期，專案組合頁則保留低摩擦的名稱／目標流程。
-- 建立型 dialog 在 mutation 期間透過 `closeDisabled` 同步鎖定 Esc、backdrop、標題列關閉與取消按鈕；可定位的專案代碼、成員 ID 與 Sprint 結束日期錯誤顯示在欄位下方並聚焦，草稿在失敗後保留。
+- 建立型 dialog 在 mutation 期間透過 `closeDisabled` 同步鎖定 Esc、backdrop、標題列關閉與取消按鈕；可定位的專案代碼、成員帳號與 Sprint 結束日期錯誤顯示在欄位下方並聚焦，草稿在失敗後保留。
 - 後端目前只有建立能力，因此正式 route 不顯示編輯或刪除；增加 OpenAPI 契約與 service mutation 前不得以 local state 模擬持久化。
 - 規劃卡片依日期排序並保留狀態、日期與目標詳情；所有寫入錯誤留在建立 dialog，清單載入錯誤則提供原地重試。
 - viewer 與封存專案仍可從專案概況開啟既有里程碑／Sprint 清單；入口文案使用「查看全部」，並在工作區明示瀏覽模式，不可因無寫入權限而隱藏契約允許的讀取內容。
@@ -94,7 +94,7 @@ flowchart TD
 
 - `pages/TeamManagement.jsx` 只負責專案範圍、回饋與元件組合；`useTeamWorkspace` 擁有成員查詢、角色 mutation 與 RBAC 衍生狀態。
 - 單一角色更新只鎖定該成員列；新增成員的錯誤留在 dialog 並保留輸入，不可用全頁 busy 狀態阻斷其他檢視。
-- 使用者目錄 API 尚未提供時，介面必須明確說明需輸入完整使用者 ID，不得模擬帳號搜尋或顯示虛構姓名。
+- `GET /projects/{projectId}/member-candidates` 是受專案管理權限保護的成員候選目錄；只回傳尚未加入目前專案的帳號，Team dialog 以姓名／Email 搜尋與選取，不要求使用者處理內部 ID。
 - 已封存專案的成員清單為唯讀；平台角色與專案內角色都通過 `canAccessProject` 後才顯示管理入口。
 
 ### Notifications 個人收件匣

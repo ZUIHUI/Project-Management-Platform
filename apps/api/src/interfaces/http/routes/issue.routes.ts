@@ -41,8 +41,8 @@ router.get("/issues/:issueId", requireProjectScope({ mode: "read", source: "issu
 
 router.patch("/issues/:issueId", requireRole("member"), requireProjectScope({ mode: "write", source: "issue" }), async (req, res) => {
   const result = await issueService.update(routeParam(req.params.issueId), req.body, req.currentUser?.id ?? null);
-  if (result.error) {
-    return fail(res, result.status ?? 422, result.error);
+  if ("error" in result) {
+    return fail(res, result.status, result.error);
   }
 
   return ok(res, result.issue);

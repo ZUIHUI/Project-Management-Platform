@@ -26,6 +26,9 @@ const parsePaging = (query: Record<string, unknown> = {}) => {
   return { page, pageSize };
 };
 
+const parseCandidateLimit = (query: Record<string, unknown> = {}) =>
+  Math.min(Math.max(Number.parseInt(`${query.limit ?? '20'}`, 10) || 20, 1), 50);
+
 const withProjectMeta = async (project) => {
   const [members, milestones, sprints] = await Promise.all([
     db.projectMember.findMany({
@@ -69,6 +72,37 @@ export const projectService = {
   async get(projectId: string) {
     const project = await db.project.findUnique({ where: { id: projectId } });
     return project ? withProjectMeta(project) : null;
+  },
+
+  async memberCandidates(projectId: string, query: Record<string, unknown> = {}) {
+    const project = await db.project.findUnique({ where: { id: projectId }, select: { id: true } });
+    if (!project) return { error: 'Project not found', status: 404 };
+
+    const keyword = `${query.q ?? ''}`.trim();
+    const limit = parseCandidateLimit(query);
+    const memberships = await db.projectMember.findMany({
+      where: { projectId },
+      select: { userId: true },
+    });
+    const existingUserIds = memberships.map((member) => member.userId);
+    const data = await db.user.findMany({
+      where: {
+        id: { notIn: existingUserIds },
+        ...(keyword
+          ? {
+              OR: [
+                { name: { contains: keyword, mode: 'insensitive' as const } },
+                { email: { contains: keyword, mode: 'insensitive' as const } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ name: 'asc' }, { email: 'asc' }],
+      take: limit,
+      select: { id: true, name: true, email: true },
+    });
+
+    return { data };
   },
 
   async timeline(projectId: string) {

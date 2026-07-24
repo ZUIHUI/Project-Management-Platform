@@ -82,6 +82,20 @@ const run = async () => {
     assert.deepEqual(outsiderProjects.data, []);
     assert.equal(outsiderProjects.meta.total, 0);
 
+    const forbiddenCandidatesRes = await fetch(`${baseUrl}/projects/proj-1/member-candidates`, {
+      headers: outsiderHeaders,
+    });
+    assert.equal(forbiddenCandidatesRes.status, 403, 'only project administrators may search member candidates');
+
+    const candidateSearchRes = await fetch(
+      `${baseUrl}/projects/proj-1/member-candidates?q=${encodeURIComponent(outsiderEmail.toUpperCase())}`,
+      { headers: pmHeaders },
+    );
+    assert.equal(candidateSearchRes.status, 200);
+    const candidateSearch = (await candidateSearchRes.json()).data;
+    assert.equal(candidateSearch.some((candidate) => candidate.id === outsider.user.id), true);
+    assert.equal(candidateSearch.some((candidate) => candidate.id === 'user-pm'), false, 'existing members must be excluded');
+
     const outsiderDashboardRes = await fetch(`${baseUrl}/dashboard`, { headers: outsiderHeaders });
     assert.equal(outsiderDashboardRes.status, 200);
     const outsiderDashboard = (await outsiderDashboardRes.json()).data;
@@ -158,6 +172,68 @@ const run = async () => {
     assert.equal(readNotificationPayload(forgedIssueNotificationFromList).projectId, undefined);
     assert.equal(readNotificationPayload(forgedIssueNotificationFromList).projectKey, undefined);
     assert.equal(readNotificationPayload(forgedIssueNotificationFromList).issueTitle, undefined);
+
+    const addCollaboratorRes = await fetch(`${baseUrl}/projects/proj-1/members`, {
+      method: 'POST',
+      headers: pmHeaders,
+      body: JSON.stringify({ userId: outsider.user.id, role: 'member' }),
+    });
+    assert.equal(addCollaboratorRes.status, 201);
+
+    const genericAssignRes = await fetch(`${baseUrl}/issues/${issue.id}`, {
+      method: 'PATCH',
+      headers: pmHeaders,
+      body: JSON.stringify({ assigneeId: outsider.user.id }),
+    });
+    assert.equal(genericAssignRes.status, 200);
+    assert.equal((await genericAssignRes.json()).data.assigneeId, outsider.user.id);
+
+    const outsiderInboxAfterAssignmentRes = await fetch(`${baseUrl}/notifications`, { headers: outsiderHeaders });
+    assert.equal(outsiderInboxAfterAssignmentRes.status, 200);
+    const outsiderInboxAfterAssignment = (await outsiderInboxAfterAssignmentRes.json()).data;
+    assert.ok(
+      outsiderInboxAfterAssignment.some((item) => (
+        item.type === 'issue.assigned' && readNotificationPayload(item).issueId === issue.id
+      )),
+      'the generic Issue editor must notify a newly selected assignee',
+    );
+
+    const activityAfterAssignmentRes = await fetch(`${baseUrl}/issues/${issue.id}/activity`, { headers: pmHeaders });
+    assert.equal(activityAfterAssignmentRes.status, 200);
+    const activityCountAfterAssignment = (await activityAfterAssignmentRes.json()).data.length;
+
+    const noOpUpdateRes = await fetch(`${baseUrl}/issues/${issue.id}`, {
+      method: 'PATCH',
+      headers: pmHeaders,
+      body: JSON.stringify({ assigneeId: outsider.user.id }),
+    });
+    assert.equal(noOpUpdateRes.status, 200);
+
+    const activityAfterNoOpRes = await fetch(`${baseUrl}/issues/${issue.id}/activity`, { headers: pmHeaders });
+    assert.equal(activityAfterNoOpRes.status, 200);
+    assert.equal(
+      (await activityAfterNoOpRes.json()).data.length,
+      activityCountAfterAssignment,
+      'saving an unchanged Issue must not append audit noise',
+    );
+
+    const addDueDateRes = await fetch(`${baseUrl}/issues/${issue.id}`, {
+      method: 'PATCH',
+      headers: pmHeaders,
+      body: JSON.stringify({ dueAt: '2030-01-02T00:00:00.000Z' }),
+    });
+    assert.equal(addDueDateRes.status, 200);
+    assert.equal((await addDueDateRes.json()).data.dueAt, '2030-01-02T00:00:00.000Z');
+
+    const clearOptionalFieldsRes = await fetch(`${baseUrl}/issues/${issue.id}`, {
+      method: 'PATCH',
+      headers: pmHeaders,
+      body: JSON.stringify({ assigneeId: null, dueAt: null }),
+    });
+    assert.equal(clearOptionalFieldsRes.status, 200);
+    const clearedIssue = (await clearOptionalFieldsRes.json()).data;
+    assert.equal(clearedIssue.assigneeId, null);
+    assert.equal(clearedIssue.dueAt, null);
 
     const assignSelfRes = await fetch(`${baseUrl}/issues/${issue.id}/assignee`, {
       method: 'PATCH',

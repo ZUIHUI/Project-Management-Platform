@@ -3,6 +3,7 @@ import type { components } from "../../shared/api/schema";
 
 export type CreateProjectPayload = components["schemas"]["CreateProjectRequest"];
 type ProjectQuery = { q?: string; status?: string; page?: number; pageSize?: number };
+type MemberCandidateQuery = { q?: string; limit?: number };
 
 export const projectService = {
   fetchProjects(query: ProjectQuery = {}) {
@@ -23,6 +24,14 @@ export const projectService = {
 
   archiveProject(id: string) {
     return apiRequest(apiClient.POST("/projects/{projectId}/archive", { params: { path: { projectId: id } } }));
+  },
+
+  fetchMemberCandidates(projectId: string, query: MemberCandidateQuery = {}) {
+    return apiRequest(
+      apiClient.GET("/projects/{projectId}/member-candidates", {
+        params: { path: { projectId }, query },
+      }),
+    );
   },
 
   upsertProjectMember(projectId: string, data: { userId: string; role: "viewer" | "member" | "project_admin" }) {

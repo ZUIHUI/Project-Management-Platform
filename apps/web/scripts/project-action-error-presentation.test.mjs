@@ -22,9 +22,9 @@ test("maps project key conflicts and validation to the key field", () => {
   );
 });
 
-test("maps a missing team member to the user ID field", () => {
+test("maps a missing team member to the account selection field", () => {
   assert.deepEqual(presentTeamMemberError(apiError("User not found"), "fallback"), {
-    message: "找不到這個使用者 ID，請確認後再試。",
+    message: "找不到這個帳號，請重新搜尋後再試。",
     field: "userId",
   });
   assert.deepEqual(presentTeamMemberError(new Error("offline"), "fallback"), {

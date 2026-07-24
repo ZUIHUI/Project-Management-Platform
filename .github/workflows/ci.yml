@@ -33,6 +33,9 @@ jobs:
       - name: Verify database test safety guard
         run: npm --workspace apps/api run test:db:guard
 
+      - name: Test Issue update semantics
+        run: npm --workspace apps/api run test:unit
+
       - name: Generate Prisma client
         env:
           DATABASE_URL: postgresql://postgres:password@localhost:5432/project_management_test

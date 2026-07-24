@@ -408,6 +408,35 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /projects/{projectId}/member-candidates:
+    get:
+      summary: Search users who can be added to a project
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - in: query
+          name: q
+          schema: { type: string }
+          description: Optional name or email search text
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        '200':
+          description: Users who are not already project members
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MemberCandidate'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /projects/{projectId}/members:
     post:
       summary: Add or update a project member
@@ -1056,6 +1085,13 @@ components:
             properties:
               id: { type: string }
               name: { type: string }
+    MemberCandidate:
+      type: object
+      required: [id, name, email]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
     ProjectResponse:
       type: object
       properties:

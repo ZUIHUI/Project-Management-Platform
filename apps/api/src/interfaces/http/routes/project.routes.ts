@@ -78,6 +78,15 @@ router.delete("/projects/:projectId", requireRole("project_admin"), requireProje
   return ok(res, result.project);
 });
 
+router.get("/projects/:projectId/member-candidates", requireRole("project_admin"), requireProjectScope({ mode: "admin" }), async (req, res) => {
+  const result = await projectService.memberCandidates(routeParam(req.params.projectId), req.query);
+  if (result.error) {
+    return fail(res, result.status ?? 422, result.error);
+  }
+
+  return ok(res, result.data);
+});
+
 router.post("/projects/:projectId/members", requireRole("project_admin"), requireProjectScope({ mode: "admin" }), async (req, res) => {
   const { userId, role } = req.body;
   if (!userId || !isProjectMemberRole(role)) {

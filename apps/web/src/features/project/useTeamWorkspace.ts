@@ -8,6 +8,7 @@ import { projectService } from "./projectService";
 
 type Project = components["schemas"]["Project"];
 type ProjectMember = NonNullable<Project["members"]>[number];
+type MemberCandidate = components["schemas"]["MemberCandidate"];
 export type ProjectMemberRole = "viewer" | "member" | "project_admin";
 
 export const useTeamWorkspace = () => {
@@ -20,7 +21,11 @@ export const useTeamWorkspace = () => {
   const [addError, setAddError] = useState("");
   const [addErrorField, setAddErrorField] = useState<"" | "userId">("");
   const [notice, setNotice] = useState("");
+  const [memberCandidates, setMemberCandidates] = useState<MemberCandidate[]>([]);
+  const [candidateLoading, setCandidateLoading] = useState(false);
+  const [candidateError, setCandidateError] = useState("");
   const projectRequestGuardRef = useRef(createLatestRequestGuard());
+  const candidateRequestGuardRef = useRef(createLatestRequestGuard());
   const busyMemberIdsRef = useRef(new Set<string>());
   const addingMemberRef = useRef(false);
 
@@ -48,7 +53,10 @@ export const useTeamWorkspace = () => {
 
   useEffect(() => {
     void loadProjects();
-    return () => projectRequestGuardRef.current.invalidate();
+    return () => {
+      projectRequestGuardRef.current.invalidate();
+      candidateRequestGuardRef.current.invalidate();
+    };
   }, [loadProjects]);
 
   const selectedProject = useMemo(
@@ -57,6 +65,42 @@ export const useTeamWorkspace = () => {
   );
   const members = useMemo(() => selectedProject?.members ?? [], [selectedProject]);
   const canManage = Boolean(selectedProject && selectedProject.status !== "archived" && canAccessProject(selectedProject, "admin"));
+
+  const clearMemberCandidates = useCallback(() => {
+    candidateRequestGuardRef.current.invalidate();
+    setMemberCandidates([]);
+    setCandidateLoading(false);
+    setCandidateError("");
+  }, []);
+
+  const searchMemberCandidates = useCallback(async (query: string) => {
+    if (!selectedProjectId || !canManage) {
+      clearMemberCandidates();
+      return;
+    }
+
+    const projectId = selectedProjectId;
+    const normalizedQuery = query.trim();
+    const requestScope = `${projectId}:${normalizedQuery.toLocaleLowerCase()}`;
+    const requestGuard = candidateRequestGuardRef.current;
+    const request = requestGuard.begin(requestScope);
+    setCandidateLoading(true);
+    setCandidateError("");
+    try {
+      const response = await projectService.fetchMemberCandidates(projectId, {
+        q: normalizedQuery || undefined,
+        limit: 20,
+      });
+      if (!requestGuard.isLatest(request, requestScope)) return;
+      setMemberCandidates((response.data?.data ?? []) as MemberCandidate[]);
+    } catch (searchError) {
+      if (!requestGuard.isLatest(request, requestScope)) return;
+      setMemberCandidates([]);
+      setCandidateError(getApiErrorMessage(searchError, "無法搜尋可加入的帳號，請稍後再試。"));
+    } finally {
+      if (requestGuard.isLatest(request, requestScope)) setCandidateLoading(false);
+    }
+  }, [canManage, clearMemberCandidates, selectedProjectId]);
 
   const applyMember = useCallback((projectId: string, member: ProjectMember) => {
     setProjects((current) => current.map((project) => {
@@ -95,11 +139,12 @@ export const useTeamWorkspace = () => {
       const response = await projectService.upsertProjectMember(projectId, { userId: normalizedUserId, role });
       const member = response.data?.data as ProjectMember | undefined;
       applyMember(projectId, member ?? { projectId, userId: normalizedUserId, role, name: normalizedUserId, email: "" });
+      if (isNew) setMemberCandidates((current) => current.filter((candidate) => candidate.id !== normalizedUserId));
       setNotice(isNew ? "成員已加入專案。" : "成員角色已更新。");
       return true;
     } catch (saveError) {
       if (isNew) {
-        const presentation = presentTeamMemberError(saveError, "無法新增成員，請確認使用者 ID 與權限。");
+        const presentation = presentTeamMemberError(saveError, "無法新增成員，請重新搜尋帳號並確認權限。");
         setAddError(presentation.message);
         setAddErrorField(presentation.field);
       } else {
@@ -118,11 +163,15 @@ export const useTeamWorkspace = () => {
   }, [applyMember, canManage, selectedProjectId]);
 
   const selectProject = useCallback((projectId: string) => {
+    candidateRequestGuardRef.current.invalidate();
     setSelectedProjectId(projectId);
     setError("");
     setAddError("");
     setAddErrorField("");
     setNotice("");
+    setMemberCandidates([]);
+    setCandidateLoading(false);
+    setCandidateError("");
   }, []);
   const clearAddError = useCallback(() => {
     setAddError("");
@@ -150,9 +199,14 @@ export const useTeamWorkspace = () => {
     error,
     addError,
     addErrorField,
+    memberCandidates,
+    candidateLoading,
+    candidateError,
     notice,
     refresh: loadProjects,
     clearAddError,
+    clearMemberCandidates,
+    searchMemberCandidates,
     addMember,
     updateMemberRole,
   };

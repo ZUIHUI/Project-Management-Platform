@@ -29,7 +29,7 @@ export const presentProjectCreateError = (error, fallback) => {
 export const presentTeamMemberError = (error, fallback) => {
   const { message } = getApiErrorDetails(error);
   if (message === "User not found") {
-    return { message: "找不到這個使用者 ID，請確認後再試。", field: "userId" };
+    return { message: "找不到這個帳號，請重新搜尋後再試。", field: "userId" };
   }
   return { message: getApiErrorMessage(error, fallback), field: "" };
 };

@@ -2,6 +2,7 @@ import { accessibleProjectWhere } from '../access/projectAccess.js';
 import type { AuthenticatedUser } from '../../domain/access/accessPolicy.js';
 import { db, idFactory } from '../../infrastructure/persistence/index.js';
 import { STATUS } from '../../config/constants.js';
+import { prepareIssueUpdate } from './issueUpdate.js';
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 20;
@@ -58,6 +59,15 @@ const notify = async (userId, type, payload) => {
       message: JSON.stringify(payload),
       read: false,
     },
+  });
+};
+
+const notifyAssignment = async (issue) => {
+  await notify(issue.assigneeId, 'issue.assigned', {
+    issueId: issue.id,
+    issueNumber: issue.number,
+    issueTitle: issue.title,
+    projectId: issue.projectId,
   });
 };
 
@@ -223,12 +233,7 @@ export const issueService = {
     });
 
     await logActivity(actorId, issue.id, 'issue.created', null, issue);
-    await notify(issue.assigneeId, 'issue.assigned', {
-      issueId: issue.id,
-      issueNumber: issue.number,
-      issueTitle: issue.title,
-      projectId: issue.projectId,
-    });
+    await notifyAssignment(issue);
     return { issue: normalizeIssue(issue) };
   },
 
@@ -240,21 +245,18 @@ export const issueService = {
       return { error: 'assignee is not in project scope', status: 422 };
     }
 
+    const updatePlan = prepareIssueUpdate(issue, payload);
+    if ('error' in updatePlan) return updatePlan;
+    if (!updatePlan.changed) return { issue: normalizeIssue(issue) };
+
     const before = { ...issue };
     const updated = await db.issue.update({
       where: { id: issueId },
-      data: {
-        title: payload.title?.trim() ?? issue.title,
-        description: payload.description?.trim() ?? issue.description,
-        priority: payload.priority ?? issue.priority,
-        dueDate: payload.dueAt ?? payload.dueDate ?? issue.dueDate,
-        sprintId: payload.sprintId ?? issue.sprintId,
-        milestoneId: payload.milestoneId ?? issue.milestoneId,
-        assigneeId: payload.assigneeId ?? issue.assigneeId,
-      },
+      data: updatePlan.data,
     });
 
     await logActivity(actorId, issueId, 'issue.updated', before, updated);
+    if (updated.assigneeId !== issue.assigneeId) await notifyAssignment(updated);
     return { issue: normalizeIssue(updated) };
   },
 
@@ -264,17 +266,11 @@ export const issueService = {
     if (assigneeId && !(await ensureProjectMember(issue.projectId, assigneeId))) {
       return { error: 'assignee is not in project scope', status: 422 };
     }
+    if (assigneeId === issue.assigneeId) return { issue: normalizeIssue(issue) };
 
     const updated = await db.issue.update({ where: { id: issueId }, data: { assigneeId } });
     await logActivity(actorId, issueId, 'issue.assigned', issue, updated);
-    if (assigneeId) {
-      await notify(assigneeId, 'issue.assigned', {
-        issueId: updated.id,
-        issueNumber: updated.number,
-        issueTitle: updated.title,
-        projectId: updated.projectId,
-      });
-    }
+    await notifyAssignment(updated);
     return { issue: normalizeIssue(updated) };
   },
 

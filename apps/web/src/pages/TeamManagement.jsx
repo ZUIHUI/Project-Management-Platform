@@ -77,6 +77,11 @@ export default function TeamManagement() {
         error={workspace.addError}
         errorField={workspace.addErrorField}
         onClearError={workspace.clearAddError}
+        candidates={workspace.memberCandidates}
+        candidateLoading={workspace.candidateLoading}
+        candidateError={workspace.candidateError}
+        onSearchCandidates={workspace.searchMemberCandidates}
+        onClearCandidates={workspace.clearMemberCandidates}
       />
     </div>
   );
