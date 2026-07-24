@@ -1,4 +1,5 @@
 import type { components } from "../../shared/api/schema";
+import { getWorkflowStatusLabel } from "../issue/workflowPresentation.js";
 
 type Notification = components["schemas"]["Notification"];
 type JsonRecord = Record<string, unknown>;
@@ -75,6 +76,27 @@ export const presentNotification = (notification: Notification) => {
         ? `你在 Issue #${issueNumber}${issueTitle ? `「${issueTitle}」` : ""}的留言中被提及`
         : "你在 Issue 留言中被提及",
       detail: projectLabel || "前往 Issue 查看留言內容。",
+      issueId,
+      issueHref,
+    };
+  }
+
+  const fromStatusId = textValue(payload?.fromStatusId);
+  const fromStatusName = textValue(payload?.fromStatusName);
+  const toStatusId = textValue(payload?.toStatusId);
+  const toStatusName = textValue(payload?.toStatusName);
+  const hasWorkflowTransition = Boolean(
+    (fromStatusId || fromStatusName) && (toStatusId || toStatusName),
+  );
+  if (notification.type === "workflow_status_changed" && hasWorkflowTransition) {
+    const fromStatus = getWorkflowStatusLabel(fromStatusId, fromStatusName);
+    const toStatus = getWorkflowStatusLabel(toStatusId, toStatusName);
+    return {
+      label: getNotificationTypeLabel(notification.type),
+      title: issueNumber
+        ? `Issue #${issueNumber}${issueTitle ? `「${issueTitle}」` : ""}已由 ${fromStatus} 轉為 ${toStatus}`
+        : `Issue 狀態已由 ${fromStatus} 轉為 ${toStatus}`,
+      detail: projectLabel || "前往 Issue 查看最新工作狀態。",
       issueId,
       issueHref,
     };

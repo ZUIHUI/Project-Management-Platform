@@ -101,6 +101,8 @@ flowchart TD
 
 - `pages/Notifications.jsx` 只組合頁首、篩選器、回饋與清單；`useNotificationsWorkspace` 擁有個人通知查詢、未讀衍生、重新整理、已讀 mutation 與自用提醒建立。
 - `features/notification/notificationPresentation.ts` 是通知文案的唯一轉譯層；Notifications 與 Home Inbox 必須共用它，不可直接顯示後端 JSON payload。
+- Issue 狀態轉換的通知由 API application use case 在狀態與活動紀錄更新後建立，前端不得在 mutation 成功後另發一個 best-effort 通知。收件人是非操作者的目前負責人；自己推進自己的工作不製造額外收件匣噪音。
+- 新的流程通知以結構化狀態與 Issue 上下文呈現並提供深連結；歷史純文字通知仍需保留原文，presentation 層必須在缺少結構化欄位時安全降級。
 - Issue 事件由 API view model 補上可讀的專案與 Issue 上下文；只有目前使用者可存取該專案時才能補全資料與產生深連結，任意自建 payload 不得成為跨專案探測入口。
 - 有完整專案上下文的通知提供「查看 Issue」並保留 `?issue=`；開啟未讀通知會同步標示已讀。逐列已讀操作使用各自 busy 狀態，不能因一列更新而鎖定全部通知。
 - 重新整理使用共用 latest-request guard，較舊的回應不得覆蓋較新的清單；已成功標示為已讀的本地狀態也不得被重疊的背景回應改回未讀。
@@ -138,6 +140,7 @@ flowchart TD
 - `pages/ActivityLogView.jsx` 是全域活動 route，只組合摘要、篩選器與清單；`useActivityWorkspace` 擁有查詢、重新整理、篩選、排序與計數衍生。
 - `features/activity/activityPresentation.ts` 將 before／after JSON 轉為可閱讀的欄位變更；畫面不可顯示或截斷原始 JSON。
 - `/activity-logs` 的 UI view model 同時提供操作者名稱／Email、專案名稱／代碼、Issue 編號／標題與深連結必要 ID；清單優先顯示這些可讀資訊，只在舊資料缺少上下文時退回原始 ID。
+- 稽核資料庫仍保留 append-only before／after 原始外鍵；API projection 需批次解析其中的負責人 ID 並以 `userReferences` 回傳可讀名稱，避免前端 N+1 查詢或把內部 user ID 當產品文案。無法解析的歷史使用者以中性「已移除的成員」降級。
 - 每筆活動以 `專案代碼 · #Issue 編號` 與 Issue 標題建立清楚層級，並提供至少 44px 的「查看 Issue」操作；目標網址必須保留 `?issue=` 直到目前專案 collection 完成解析。
 - 初次查詢與背景重新整理共用 latest-request guard；較舊的成功或錯誤回應都不得覆蓋最新活動流。
 - 目前 `/activity-logs` 契約回傳使用者可存取專案的全域紀錄，因此頁面不得暗示已套用單一專案篩選；需要專案篩選時應先擴充契約。

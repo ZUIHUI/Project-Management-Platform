@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { notificationsService } from "../../services/notifications";
 import { getApiErrorMessage } from "../../shared/api/apiErrorPresentation.js";
 import { createLatestRequestGuard } from "../../shared/latestRequestGuard.js";
 import { canAccessProject, projectService } from "../project";
@@ -219,11 +218,6 @@ export const useIssueWorkspace = (routeProjectId?: string) => {
       }) as Issue;
       setIssues((current) => current.map((item) => (item.id === issue.id ? updatedIssue : item)));
       setNotice(`#${issue.number} 已移至「${getWorkflowStatusLabel(nextStatus)}」。`);
-
-      void notificationsService.createNotification({
-        type: "workflow_status_changed",
-        message: `Issue #${issue.number} 已由 ${getWorkflowStatusLabel(currentStatus)} 轉為 ${getWorkflowStatusLabel(nextStatus)}`,
-      }).catch(() => undefined);
       return true;
     } catch (transitionError) {
       setError(getApiErrorMessage(transitionError, "狀態更新失敗，請確認流程轉換規則。"));

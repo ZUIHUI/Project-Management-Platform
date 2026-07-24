@@ -1526,6 +1526,10 @@ export interface components {
             createdAt: string;
             mentions?: string[];
         };
+        ActivityUserReference: {
+            id: string;
+            name: string;
+        };
         ActivityLog: {
             id: string;
             actorId?: string | null;
@@ -1540,6 +1544,7 @@ export interface components {
             action: string;
             before?: string | null;
             after?: string | null;
+            userReferences: components["schemas"]["ActivityUserReference"][];
             /** Format: date-time */
             createdAt: string;
         };

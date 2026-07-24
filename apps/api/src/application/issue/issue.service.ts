@@ -73,6 +73,45 @@ const activityInclude = {
   },
 } as const;
 
+type ActivityUserReference = {
+  id: string;
+  name: string;
+};
+
+const parseActivitySnapshot = (value: string | null) => {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+const getActivityAssigneeIds = (activity: { before: string | null; after: string | null }) => {
+  const before = parseActivitySnapshot(activity.before);
+  const after = parseActivitySnapshot(activity.after);
+  return [...new Set(
+    [before?.assigneeId, after?.assigneeId]
+      .filter((value): value is string => typeof value === 'string' && value.length > 0),
+  )];
+};
+
+const loadActivityUserReferences = async (
+  activities: Array<{ before: string | null; after: string | null }>,
+) => {
+  const userIds = [...new Set(activities.flatMap(getActivityAssigneeIds))];
+  if (!userIds.length) return new Map<string, ActivityUserReference>();
+
+  const users = await db.user.findMany({
+    where: { id: { in: userIds } },
+    select: { id: true, name: true },
+  });
+  return new Map(users.map((user) => [user.id, user]));
+};
+
 const commentInclude = {
   author: { select: { name: true, email: true } },
 } as const;
@@ -86,8 +125,14 @@ const viewComment = (comment) => {
   };
 };
 
-const viewActivity = (activity) => {
+const viewActivity = (
+  activity,
+  userReferenceMap: Map<string, ActivityUserReference>,
+) => {
   const { actor, issue, ...record } = activity;
+  const userReferences = getActivityAssigneeIds(activity)
+    .map((userId) => userReferenceMap.get(userId))
+    .filter((reference): reference is ActivityUserReference => Boolean(reference));
   return {
     ...record,
     actorName: actor?.name ?? 'System',
@@ -97,7 +142,13 @@ const viewActivity = (activity) => {
     projectName: issue.project.name,
     issueNumber: issue.number,
     issueTitle: issue.title,
+    userReferences,
   };
+};
+
+const viewActivities = async (activities) => {
+  const userReferenceMap = await loadActivityUserReferences(activities);
+  return activities.map((activity) => viewActivity(activity, userReferenceMap));
 };
 
 export const issueService = {
@@ -231,7 +282,10 @@ export const issueService = {
     const issue = await db.issue.findUnique({ where: { id: issueId } });
     if (!issue) return { error: 'Issue not found', status: 404 };
 
-    const status = await db.status.findUnique({ where: { id: statusId } });
+    const [currentStatus, status] = await Promise.all([
+      db.status.findUnique({ where: { id: issue.statusId } }),
+      db.status.findUnique({ where: { id: statusId } }),
+    ]);
     if (!status) return { error: 'Unknown status', status: 422 };
 
     const allowedRows = await db.transition.findMany({ where: { fromStatusId: issue.statusId } });
@@ -240,6 +294,18 @@ export const issueService = {
 
     const updated = await db.issue.update({ where: { id: issueId }, data: { statusId } });
     await logActivity(actorId, issueId, 'issue.status_changed', issue, updated);
+    if (updated.assigneeId && updated.assigneeId !== actorId) {
+      await notify(updated.assigneeId, 'workflow_status_changed', {
+        issueId: updated.id,
+        issueNumber: updated.number,
+        issueTitle: updated.title,
+        projectId: updated.projectId,
+        fromStatusId: issue.statusId,
+        fromStatusName: currentStatus?.name ?? issue.statusId,
+        toStatusId: status.id,
+        toStatusName: status.name,
+      });
+    }
     return { issue: normalizeIssue(updated) };
   },
 
@@ -286,7 +352,7 @@ export const issueService = {
       orderBy: { createdAt: 'desc' },
       include: activityInclude,
     });
-    return data.map(viewActivity);
+    return viewActivities(data);
   },
 
   async issueActivity(issueId: string, query: Record<string, any> = {}) {
@@ -300,7 +366,7 @@ export const issueService = {
       take: limit,
       include: activityInclude,
     });
-    return { data: data.map(viewActivity), limit };
+    return { data: await viewActivities(data), limit };
   },
 
   async legacyTasks(actor: AuthenticatedUser) {

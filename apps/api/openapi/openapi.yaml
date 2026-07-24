@@ -927,9 +927,15 @@ components:
         mentions:
           type: array
           items: { type: string }
+    ActivityUserReference:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
     ActivityLog:
       type: object
-      required: [id, issueId, action, createdAt]
+      required: [id, issueId, action, userReferences, createdAt]
       properties:
         id: { type: string }
         actorId: { type: [string, 'null'] }
@@ -944,6 +950,10 @@ components:
         action: { type: string }
         before: { type: [string, 'null'] }
         after: { type: [string, 'null'] }
+        userReferences:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActivityUserReference'
         createdAt: { type: string, format: date-time }
     Notification:
       type: object

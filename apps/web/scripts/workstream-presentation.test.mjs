@@ -9,6 +9,7 @@ import {
   SYSTEM_ACTOR_ID,
   buildActivityActorOptions,
   getActivityActionLabel,
+  presentActivity,
   presentActivityContext,
 } from "../src/features/activity/activityPresentation.ts";
 import { buildProjectMemberLabelMap, presentProjectMember } from "../src/features/project/projectMemberPresentation.ts";
@@ -41,6 +42,53 @@ test("notification deep links require both project and Issue context", () => {
   assert.equal(buildNotificationIssueHref("project-1", "issue-1"), "/projects/project-1/issues?issue=issue-1");
   assert.equal(buildNotificationIssueHref("", "issue-1"), "");
   assert.equal(buildNotificationIssueHref("project-1", ""), "");
+});
+
+test("workflow notifications explain the transition and keep Issue context", () => {
+  const presentation = presentNotification({
+    id: "notification-status",
+    userId: "user-dev",
+    type: "workflow_status_changed",
+    message: JSON.stringify({
+      issueId: "issue-2",
+      fromStatusId: "todo",
+      toStatusId: "doing",
+    }),
+    payload: {
+      issueId: "issue-2",
+      issueNumber: 12,
+      issueTitle: "Review accessibility",
+      projectId: "project-1",
+      projectKey: "CORE",
+      projectName: "Core Refactor",
+      fromStatusId: "todo",
+      toStatusId: "doing",
+    },
+    read: false,
+    createdAt: "2026-07-22T00:00:00.000Z",
+  });
+
+  assert.deepEqual(presentation, {
+    label: "流程",
+    title: "Issue #12「Review accessibility」已由 待處理 轉為 進行中",
+    detail: "CORE · Core Refactor",
+    issueId: "issue-2",
+    issueHref: "/projects/project-1/issues?issue=issue-2",
+  });
+});
+
+test("legacy workflow notifications preserve their plain text", () => {
+  const presentation = presentNotification({
+    id: "notification-status-legacy",
+    userId: "user-dev",
+    type: "workflow_status_changed",
+    message: "Issue #12 已由 待處理 轉為 進行中",
+    read: false,
+    createdAt: "2026-07-22T00:00:00.000Z",
+  });
+
+  assert.equal(presentation.title, "Issue #12 已由 待處理 轉為 進行中");
+  assert.equal(presentation.issueHref, "");
 });
 
 test("unknown event types use safe product labels", () => {
@@ -87,6 +135,44 @@ test("activity actor options deduplicate people and localize the system fallback
     { id: "user-pm", label: "PM", detail: "pm@example.com" },
     { id: SYSTEM_ACTOR_ID, label: "系統", detail: "" },
   ]);
+});
+
+test("activity changes resolve assignee references without exposing internal user IDs", () => {
+  const activity = {
+    id: "activity-assigned",
+    issueId: "issue-1",
+    action: "issue.assigned",
+    before: JSON.stringify({ assigneeId: null }),
+    after: JSON.stringify({ assigneeId: "user-dev" }),
+    userReferences: [
+      { id: "user-dev", name: "Developer" },
+    ],
+    createdAt: "2026-07-22T00:00:00.000Z",
+  };
+
+  assert.deepEqual(presentActivity(activity), {
+    summary: "更新了 負責人",
+    changes: [{
+      field: "assigneeId",
+      label: "負責人",
+      before: "未指派",
+      after: "Developer",
+    }],
+  });
+});
+
+test("activity changes use a safe label when an assignee no longer exists", () => {
+  const activity = {
+    id: "activity-assigned-removed",
+    issueId: "issue-1",
+    action: "issue.assigned",
+    before: JSON.stringify({ assigneeId: "user-removed" }),
+    after: JSON.stringify({ assigneeId: null }),
+    userReferences: [],
+    createdAt: "2026-07-22T00:00:00.000Z",
+  };
+
+  assert.equal(presentActivity(activity).changes[0].before, "已移除的成員");
 });
 
 test("project member presentation prefers readable identity while retaining the technical ID", () => {

@@ -2,6 +2,7 @@ import type { components } from "../../shared/api/schema";
 import { getIssuePriorityPresentation, getWorkflowStatusLabel } from "../issue/workflowPresentation.js";
 
 type ActivityLog = components["schemas"]["ActivityLog"];
+type ActivityUserReference = components["schemas"]["ActivityUserReference"];
 type JsonRecord = Record<string, unknown>;
 
 export type ActivityActorOption = {
@@ -54,8 +55,20 @@ const parseRecord = (value?: string | null): JsonRecord | null => {
   }
 };
 
-const presentValue = (field: string, value: unknown) => {
+const buildUserReferenceMap = (references: ActivityUserReference[]) => (
+  new Map(references.map((reference) => [
+    reference.id,
+    reference.name || "成員",
+  ]))
+);
+
+const presentValue = (
+  field: string,
+  value: unknown,
+  userReferenceMap: Map<string, string>,
+) => {
   if (value === null || value === undefined || value === "") return field === "assigneeId" ? "未指派" : "未設定";
+  if (field === "assigneeId") return userReferenceMap.get(`${value}`) ?? "已移除的成員";
   if (field === "statusId") return getWorkflowStatusLabel(`${value}`);
   if (field === "priority") return getIssuePriorityPresentation(`${value}`).label;
   if (field === "dueDate" || field === "dueAt") {
@@ -113,14 +126,20 @@ export const presentActivityContext = (activity: ActivityLog) => ({
 export const presentActivity = (activity: ActivityLog) => {
   const before = parseRecord(activity.before);
   const after = parseRecord(activity.after);
+  const userReferenceMap = buildUserReferenceMap(activity.userReferences ?? []);
 
   if (activity.action === "issue.created") {
-    const title = after?.title ? `「${presentValue("title", after.title)}」` : "一個新 Issue";
+    const title = after?.title ? `「${presentValue("title", after.title, userReferenceMap)}」` : "一個新 Issue";
     return { summary: `建立了 ${title}`, changes: [] };
   }
 
   if (activity.action === "issue.commented") {
-    return { summary: after?.body ? `留言：${presentValue("body", after.body)}` : "新增了一則留言", changes: [] };
+    return {
+      summary: after?.body
+        ? `留言：${presentValue("body", after.body, userReferenceMap)}`
+        : "新增了一則留言",
+      changes: [],
+    };
   }
 
   const changes = Object.keys(fieldLabels)
@@ -128,8 +147,8 @@ export const presentActivity = (activity: ActivityLog) => {
     .map((field) => ({
       field,
       label: fieldLabels[field],
-      before: presentValue(field, before?.[field]),
-      after: presentValue(field, after?.[field]),
+      before: presentValue(field, before?.[field], userReferenceMap),
+      after: presentValue(field, after?.[field], userReferenceMap),
     }))
     .slice(0, 4);
 

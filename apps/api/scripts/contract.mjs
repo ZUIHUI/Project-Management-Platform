@@ -44,6 +44,25 @@ const run = async () => {
 
     const issueId = issueBody.data.id;
 
+    const assignIssueRes = await fetch(`${baseUrl}/issues/${issueId}/assignee`, {
+      method: "PATCH",
+      headers: { ...auth, "content-type": "application/json" },
+      body: JSON.stringify({ assigneeId: "user-dev" }),
+    });
+    assert.equal(assignIssueRes.status, 200);
+
+    const activityRes = await fetch(`${baseUrl}/activity-logs`, { headers: auth });
+    assert.equal(activityRes.status, 200);
+    const activityBody = await activityRes.json();
+    const assignmentActivity = activityBody.data.find(
+      (activity) => activity.issueId === issueId && activity.action === "issue.assigned",
+    );
+    assert.ok(assignmentActivity, "assignment should create an activity projection");
+    assert.deepEqual(assignmentActivity.userReferences, [{
+      id: "user-dev",
+      name: "Developer",
+    }]);
+
     const dashboardRes = await fetch(`${baseUrl}/dashboard`, { headers: auth });
     assert.equal(dashboardRes.status, 200);
     const dashboard = (await dashboardRes.json()).data;
@@ -83,6 +102,33 @@ const run = async () => {
     });
     assert.equal(badTransitionRes.status, 422);
     assertErrorShape(await badTransitionRes.json(), 422);
+
+    const validTransitionRes = await fetch(`${baseUrl}/issues/${issueId}/status`, {
+      method: "PATCH",
+      headers: { ...auth, "content-type": "application/json" },
+      body: JSON.stringify({ statusId: "doing" }),
+    });
+    assert.equal(validTransitionRes.status, 200);
+
+    const devLoginRes = await fetch(`${baseUrl}/login`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: "dev@example.com", password: "password" }),
+    });
+    assert.equal(devLoginRes.status, 200);
+    const devLoginBody = await devLoginRes.json();
+    const devAuth = { Authorization: `Bearer ${devLoginBody.accessToken}` };
+    const devNotificationsRes = await fetch(`${baseUrl}/notifications`, { headers: devAuth });
+    assert.equal(devNotificationsRes.status, 200);
+    const devNotificationsBody = await devNotificationsRes.json();
+    const workflowNotification = devNotificationsBody.data.find(
+      (notification) => notification.type === "workflow_status_changed"
+        && notification.payload?.issueId === issueId,
+    );
+    assert.ok(workflowNotification, "a status change should notify a different assignee");
+    assert.equal(workflowNotification.payload.fromStatusId, "todo");
+    assert.equal(workflowNotification.payload.toStatusId, "doing");
+    assert.equal(workflowNotification.payload.projectId, "proj-1");
 
     const outsiderLoginRes = await fetch(`${baseUrl}/register`, {
       method: "POST",
