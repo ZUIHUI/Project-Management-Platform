@@ -1213,6 +1213,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         body: string;
+                        mentionedUserIds?: string[];
                     };
                 };
             };

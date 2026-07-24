@@ -656,6 +656,11 @@ paths:
               required: [body]
               properties:
                 body: { type: string }
+                mentionedUserIds:
+                  type: array
+                  maxItems: 20
+                  uniqueItems: true
+                  items: { type: string }
       responses:
         '201':
           description: Created comment

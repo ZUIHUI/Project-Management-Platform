@@ -27,6 +27,7 @@ function IssueDetailContent({
   issue,
   statuses,
   members,
+  currentUserId,
   comments,
   activityLogs,
   canModify,
@@ -39,9 +40,11 @@ function IssueDetailContent({
   onRetry,
 }) {
   const [commentDraft, setCommentDraft] = useState("");
+  const [mentionedUserIds, setMentionedUserIds] = useState([]);
 
   useEffect(() => {
     setCommentDraft("");
+    setMentionedUserIds([]);
   }, [issue?.id]);
 
   if (!issue) {
@@ -50,12 +53,27 @@ function IssueDetailContent({
 
   const priority = getIssuePriorityPresentation(issue.priority);
   const currentStatus = statuses.find((status) => status.id === issue.statusId);
+  const mentionableMembers = members
+    .filter((member) => member.userId !== currentUserId)
+    .map((member) => ({ member, identity: presentProjectMember(member) }))
+    .filter(({ identity }) => identity.hasReadableName);
 
   const submitComment = async (event) => {
     event.preventDefault();
     if (!commentDraft.trim() || saving) return;
-    const created = await onComment(issue.id, commentDraft);
-    if (created) setCommentDraft("");
+    const created = await onComment(issue.id, commentDraft, mentionedUserIds);
+    if (created) {
+      setCommentDraft("");
+      setMentionedUserIds([]);
+    }
+  };
+
+  const toggleMention = (userId) => {
+    setMentionedUserIds((current) => (
+      current.includes(userId)
+        ? current.filter((id) => id !== userId)
+        : [...current, userId]
+    ));
   };
 
   return (
@@ -104,11 +122,47 @@ function IssueDetailContent({
             <textarea
               id={`issue-comment-${issue.id}`}
               className={cn(inputClass, "min-h-24 py-3 text-sm")}
-              placeholder="輸入留言，可用 @name 提及成員"
+              placeholder="輸入留言內容"
               value={commentDraft}
               onChange={(event) => setCommentDraft(event.target.value)}
               disabled={saving}
             />
+            {mentionableMembers.length ? (
+              <fieldset
+                className="rounded-control border border-line-soft bg-surface px-3 pb-3"
+                disabled={saving}
+              >
+                <legend className="px-1 text-sm font-semibold text-ink">提及專案成員（選填）</legend>
+                <p className="mb-2 mt-1 text-xs leading-5 text-muted">
+                  點選後會在送出留言時通知；只顯示目前專案成員。
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {mentionableMembers.map(({ member, identity }) => {
+                    const selected = mentionedUserIds.includes(member.userId);
+                    const accessibleLabel = [
+                      selected ? "取消提及" : "提及",
+                      identity.displayName,
+                      identity.email,
+                    ].filter(Boolean).join(" ");
+                    return (
+                      <Button
+                        key={member.userId}
+                        type="button"
+                        size="sm"
+                        variant={selected ? "primary" : "outline"}
+                        aria-label={accessibleLabel}
+                        aria-pressed={selected}
+                        title={identity.email || identity.displayName}
+                        className="max-w-full"
+                        onClick={() => toggleMention(member.userId)}
+                      >
+                        <span className="truncate">{identity.displayName}</span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              </fieldset>
+            ) : null}
             <Button type="submit" size="sm" disabled={saving || !commentDraft.trim()}>
               {saving ? "處理中…" : "送出留言"}
             </Button>

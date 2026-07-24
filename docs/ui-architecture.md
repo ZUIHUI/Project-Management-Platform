@@ -40,6 +40,7 @@ flowchart TD
 - 深連結指向不存在或不屬於目前專案的 Issue 時，需移除無效參數並顯示原地說明，不可讓網址與畫面靜默指向不同工作。
 - Issue 清單、留言與活動查詢使用 latest-request guard；只允許目前專案／目前 Issue 的最新回應更新畫面，mutation 完成後的回饋也不得落到使用者已切換的新 Issue。
 - `features/issue/components/` 擁有建立對話框、工作範圍工具列、Issue 清單與詳情呈現。
+- 留言提及使用目前專案成員作為唯一候選範圍；詳情編輯器提供可鍵盤操作的成員切換按鈕並以結構化 `mentionedUserIds` 送出，後端再次驗證專案成員資格。歷史 `@姓名` 文字仍可解析中文與含空白姓名，但不得掃描或通知專案外帳號。
 - `BoardView` 是共用看板投影；全域與專案內看板不得各自維護另一套卡片與欄位實作。
 - `TaskDetailPanel` 是 Board、Calendar、Timeline 與專案總覽共用的詳情編輯器；草稿、欄位驗證、儲存狀態與未儲存離開確認不得散落到各 route page。
 - `useProjectViewData` 必須分離專案清單與 Issue 載入狀態；切換專案時以請求序號忽略過期回應，避免舊專案資料覆蓋目前範圍。

@@ -33,7 +33,7 @@ jobs:
       - name: Verify database test safety guard
         run: npm --workspace apps/api run test:db:guard
 
-      - name: Test Issue update semantics
+      - name: Test Issue application semantics
         run: npm --workspace apps/api run test:unit
 
       - name: Generate Prisma client

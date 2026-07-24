@@ -3,6 +3,7 @@ import type { AuthenticatedUser } from '../../domain/access/accessPolicy.js';
 import { db, idFactory } from '../../infrastructure/persistence/index.js';
 import { STATUS } from '../../config/constants.js';
 import { prepareIssueUpdate } from './issueUpdate.js';
+import { findMentionedMemberIds, validateExplicitMentionIds } from './issueMention.js';
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 20;
@@ -26,15 +27,6 @@ const normalizeIssue = (issue) => {
 
 const ensureProjectMember = async (projectId, userId) =>
   !!(await db.projectMember.findUnique({ where: { projectId_userId: { projectId, userId } } }));
-
-const parseMentions = async (body) => {
-  if (!body) return [];
-  const matched = body.match(/@([a-zA-Z0-9._-]+)/g) ?? [];
-  const unique = [...new Set(matched.map((token) => token.slice(1).toLowerCase()))];
-  if (!unique.length) return [];
-  const users = await db.user.findMany();
-  return users.filter((user) => unique.includes(user.name.toLowerCase())).map((u) => u.id);
-};
 
 const logActivity = async (actorId, issueId, action, before, after) => {
   await db.activityLog.create({
@@ -319,6 +311,18 @@ export const issueService = {
     if (!issue) return { error: 'Issue not found', status: 404 };
     if (!payload.body?.trim()) return { error: 'body is required', status: 422 };
 
+    const projectMembers = await db.projectMember.findMany({
+      where: { projectId: issue.projectId },
+      include: { user: { select: { id: true, name: true } } },
+    });
+    const memberUsers = projectMembers.map((member) => member.user);
+    const projectMemberIds = new Set(memberUsers.map((user) => user.id));
+    const explicitMentions = validateExplicitMentionIds(payload.mentionedUserIds, projectMemberIds);
+    if ('error' in explicitMentions) return explicitMentions;
+    const inlineMentions = findMentionedMemberIds(payload.body, memberUsers);
+    const mentions = [...new Set([...explicitMentions.ids, ...inlineMentions])]
+      .filter((userId) => userId !== actorId);
+
     const comment = await db.comment.create({
       data: {
         id: idFactory('com'),
@@ -329,7 +333,6 @@ export const issueService = {
       include: commentInclude,
     });
 
-    const mentions = await parseMentions(payload.body);
     await Promise.all(mentions.map((userId) => notify(userId, 'comment.mentioned', {
       issueId,
       issueNumber: issue.number,

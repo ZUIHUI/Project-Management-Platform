@@ -173,6 +173,16 @@ const run = async () => {
     assert.equal(readNotificationPayload(forgedIssueNotificationFromList).projectKey, undefined);
     assert.equal(readNotificationPayload(forgedIssueNotificationFromList).issueTitle, undefined);
 
+    const externalMentionRes = await fetch(`${baseUrl}/issues/${issue.id}/comments`, {
+      method: 'POST',
+      headers: pmHeaders,
+      body: JSON.stringify({
+        body: 'This comment must not notify an account outside the project.',
+        mentionedUserIds: [outsider.user.id],
+      }),
+    });
+    assert.equal(externalMentionRes.status, 422, 'comment recipients must belong to the Issue project');
+
     const addCollaboratorRes = await fetch(`${baseUrl}/projects/proj-1/members`, {
       method: 'POST',
       headers: pmHeaders,
@@ -266,13 +276,28 @@ const run = async () => {
     const commentRes = await fetch(`${baseUrl}/issues/${issue.id}/comments`, {
       method: 'POST',
       headers: pmHeaders,
-      body: JSON.stringify({ body: 'Identity-bound comment', authorId: outsider.user.id }),
+      body: JSON.stringify({
+        body: 'Identity-bound comment for Scope Outsider',
+        authorId: outsider.user.id,
+        mentionedUserIds: [outsider.user.id],
+      }),
     });
     assert.equal(commentRes.status, 201);
     const createdComment = (await commentRes.json()).data;
     assert.equal(createdComment.authorId, 'user-pm', 'comment author must come from the access token');
     assert.equal(createdComment.authorName, 'PM');
     assert.equal(createdComment.authorEmail, 'pm@example.com');
+    assert.deepEqual(createdComment.mentions, [outsider.user.id]);
+
+    const outsiderInboxAfterMentionRes = await fetch(`${baseUrl}/notifications`, { headers: outsiderHeaders });
+    assert.equal(outsiderInboxAfterMentionRes.status, 200);
+    const outsiderInboxAfterMention = (await outsiderInboxAfterMentionRes.json()).data;
+    assert.ok(
+      outsiderInboxAfterMention.some((item) => (
+        item.type === 'comment.mentioned' && readNotificationPayload(item).issueId === issue.id
+      )),
+      'a selected project member must receive the comment mention notification',
+    );
 
     const contextualNotificationsRes = await fetch(`${baseUrl}/notifications`, { headers: pmHeaders });
     assert.equal(contextualNotificationsRes.status, 200);

@@ -67,11 +67,11 @@ export const issueService = {
     return apiRequest(apiClient.GET("/issues/{issueId}/comments", { params: { path: { issueId: id } } }));
   },
 
-  createIssueComment(id: string, body: string) {
+  createIssueComment(id: string, body: string, mentionedUserIds: string[] = []) {
     return apiRequest(
       apiClient.POST("/issues/{issueId}/comments", {
         params: { path: { issueId: id } },
-        body: { body },
+        body: { body, mentionedUserIds },
       }),
     );
   },

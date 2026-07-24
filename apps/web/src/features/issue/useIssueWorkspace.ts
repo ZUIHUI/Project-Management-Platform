@@ -267,13 +267,13 @@ export const useIssueWorkspace = (routeProjectId?: string) => {
     }
   }, [canModify, loadIssueDetails, loadIssues, projectId]);
 
-  const addComment = useCallback(async (issueId: string, body: string) => {
+  const addComment = useCallback(async (issueId: string, body: string, mentionedUserIds: string[] = []) => {
     if (!canModify || !body.trim()) return false;
     setDetailSaving(true);
     setDetailError("");
     setDetailNotice("");
     try {
-      await issueService.createIssueComment(issueId, body.trim());
+      await issueService.createIssueComment(issueId, body.trim(), mentionedUserIds);
       if (selectedIssueIdRef.current === issueId) {
         await loadIssueDetails(issueId);
         if (selectedIssueIdRef.current === issueId) setDetailNotice("留言已送出。");

@@ -11,10 +11,12 @@ import { useIssueRouteState } from "../features/issue/useIssueRouteState";
 import { useIssueWorkspace } from "../features/issue/useIssueWorkspace";
 import { buildWorkflowStatusOptions } from "../features/issue/workflowPresentation.js";
 import { buildProjectMemberLabelMap } from "../features/project/projectMemberPresentation";
+import { useCurrentUser } from "../features/auth/useCurrentUser";
 import { useMediaQuery } from "../shared/useMediaQuery";
 
 export default function Tasks({ viewMode = "list" }) {
   const { projectId: routeProjectId } = useParams();
+  const currentUser = useCurrentUser();
   const workspace = useIssueWorkspace(routeProjectId);
   const isDesktopDetail = useMediaQuery("(min-width: 1280px)");
   const routeState = useIssueRouteState({
@@ -77,6 +79,7 @@ export default function Tasks({ viewMode = "list" }) {
     issue: workspace.selectedIssue,
     statuses: workspace.statuses,
     members: workspace.selectedProject?.members ?? [],
+    currentUserId: currentUser?.id ?? "",
     comments: workspace.comments,
     activityLogs: workspace.activityLogs,
     canModify: workspace.canModify,
