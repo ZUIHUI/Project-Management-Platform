@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import Modal from "../../../components/Modal";
-import { Alert, Button, FormField } from "../../../components/ui";
+import { Alert, Button, FormField, MutationForm } from "../../../components/ui";
 import { cn, inputClass } from "../../../components/ui/styles";
 import { ISSUE_PRIORITY_OPTIONS } from "../workflowPresentation.js";
 
@@ -39,7 +39,7 @@ export default function IssueCreateDialog({ isOpen, onClose, onCreate, saving, e
       maxWidth="max-w-2xl"
       closeDisabled={saving}
     >
-      <form className="grid gap-5 sm:grid-cols-2" onSubmit={handleSubmit} aria-busy={saving || undefined}>
+      <MutationForm busy={saving} className="grid gap-5 sm:grid-cols-2" onSubmit={handleSubmit}>
         {error ? <Alert tone="error" title="無法建立 Issue" className="sm:col-span-2">{error}</Alert> : null}
 
         <FormField label="Issue 標題" htmlFor="new-issue-title" required className="sm:col-span-2">
@@ -50,7 +50,6 @@ export default function IssueCreateDialog({ isOpen, onClose, onCreate, saving, e
               value={draft.title}
               aria-describedby={describedBy}
               aria-invalid={invalid}
-              disabled={saving}
               onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
               placeholder="例如：完成行動版導覽狀態"
               autoFocus
@@ -64,7 +63,6 @@ export default function IssueCreateDialog({ isOpen, onClose, onCreate, saving, e
             id="new-issue-priority"
             className={inputClass}
             value={draft.priority}
-            disabled={saving}
             onChange={(event) => setDraft((current) => ({ ...current, priority: event.target.value }))}
           >
             {ISSUE_PRIORITY_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
@@ -83,18 +81,17 @@ export default function IssueCreateDialog({ isOpen, onClose, onCreate, saving, e
             id="new-issue-description"
             className={cn(inputClass, "min-h-32 py-3")}
             value={draft.description}
-            disabled={saving}
             onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))}
           />
         </FormField>
 
         <div className="flex flex-col-reverse gap-2 border-t border-line-soft pt-5 sm:col-span-2 sm:flex-row sm:justify-end">
-          <Button variant="secondary" onClick={closeDialog} disabled={saving}>取消</Button>
-          <Button type="submit" disabled={saving || !draft.title.trim()}>
+          <Button variant="secondary" onClick={closeDialog}>取消</Button>
+          <Button type="submit" disabled={!draft.title.trim()}>
             {saving ? "建立中…" : "建立 Issue"}
           </Button>
         </div>
-      </form>
+      </MutationForm>
     </Modal>
   );
 }

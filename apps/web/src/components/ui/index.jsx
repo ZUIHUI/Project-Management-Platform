@@ -11,6 +11,16 @@ export function Button({ as: Component = "button", type = "button", variant, siz
   );
 }
 
+export function MutationForm({ busy = false, className, children, ...props }) {
+  return (
+    <form {...props} aria-busy={busy || undefined}>
+      <fieldset disabled={busy} className={cn("min-w-0 border-0 p-0", className)}>
+        {children}
+      </fieldset>
+    </form>
+  );
+}
+
 export function IconButton({ label, children, className, ...props }) {
   return (
     <button

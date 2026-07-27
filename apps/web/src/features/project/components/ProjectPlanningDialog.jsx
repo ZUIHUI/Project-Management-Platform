@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import Modal from "../../../components/Modal";
-import { Alert, Button, FormField } from "../../../components/ui";
+import { Alert, Button, FormField, MutationForm } from "../../../components/ui";
 import { inputClass } from "../../../components/ui/styles";
 import { getSprintEndDateError } from "../projectPlanningValidation.js";
 
@@ -65,7 +65,7 @@ export default function ProjectPlanningDialog({ kind, projectName, isOpen, onClo
       title={title}
       description={`加入「${projectName}」的${milestone ? "可驗收交付節點" : "下一段團隊工作週期"}。`}
     >
-      <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+      <MutationForm busy={saving} className="space-y-5" onSubmit={handleSubmit} noValidate>
         {error ? <Alert tone="error" title={`無法${title}`}>{error}</Alert> : null}
 
         <FormField label={milestone ? "里程碑名稱" : "Sprint 名稱"} htmlFor={`planning-${kind}-name`} required>
@@ -127,10 +127,10 @@ export default function ProjectPlanningDialog({ kind, projectName, isOpen, onClo
         )}
 
         <div className="flex flex-col-reverse gap-2 border-t border-line-soft pt-5 sm:flex-row sm:justify-end">
-          <Button variant="secondary" onClick={closeDialog} disabled={saving}>取消</Button>
-          <Button type="submit" disabled={saving || !draft.name.trim()}>{saving ? "建立中…" : title}</Button>
+          <Button variant="secondary" onClick={closeDialog}>取消</Button>
+          <Button type="submit" disabled={!draft.name.trim()}>{saving ? "建立中…" : title}</Button>
         </div>
-      </form>
+      </MutationForm>
     </Modal>
   );
 }

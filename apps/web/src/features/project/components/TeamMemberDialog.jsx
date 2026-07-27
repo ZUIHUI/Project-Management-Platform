@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
 import Modal from "../../../components/Modal";
-import { Alert, Button, FormField } from "../../../components/ui";
+import { Alert, Button, FormField, MutationForm } from "../../../components/ui";
 import { inputClass } from "../../../components/ui/styles";
 import { PROJECT_ROLES } from "./teamRoles";
 
@@ -34,12 +34,12 @@ export default function TeamMemberDialog({
   }, [isOpen, onClearError]);
 
   useEffect(() => {
-    if (!isOpen) return undefined;
+    if (!isOpen || saving) return undefined;
     const timeoutId = window.setTimeout(() => {
       onSearchCandidates?.(searchQuery);
     }, 300);
     return () => window.clearTimeout(timeoutId);
-  }, [isOpen, onSearchCandidates, searchQuery]);
+  }, [isOpen, onSearchCandidates, saving, searchQuery]);
 
   useEffect(() => {
     if (isOpen && errorField === "userId") searchRef.current?.focus();
@@ -79,7 +79,7 @@ export default function TeamMemberDialog({
       title="新增專案成員"
       description={`搜尋既有帳號，將成員加入「${projectName}」並設定專案內角色。`}
     >
-      <form className="space-y-5" onSubmit={handleSubmit}>
+      <MutationForm busy={saving} className="space-y-5" onSubmit={handleSubmit}>
         {error && !errorField ? <Alert tone="error" title="無法新增成員">{error}</Alert> : null}
 
         <FormField
@@ -131,6 +131,7 @@ export default function TeamMemberDialog({
                   type="button"
                   size="sm"
                   variant="outline"
+                  disabled={candidateLoading}
                   onClick={() => onSearchCandidates?.(searchQuery)}
                 >
                   <RefreshCw size={16} aria-hidden="true" />
@@ -155,6 +156,7 @@ export default function TeamMemberDialog({
                     <button
                       type="button"
                       aria-pressed={selected}
+                      disabled={candidateLoading}
                       className={`min-h-16 w-full rounded-control border px-4 py-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand ${
                         selected
                           ? "border-brand bg-brand-soft"
@@ -190,12 +192,12 @@ export default function TeamMemberDialog({
         </FormField>
 
         <div className="flex flex-col-reverse gap-2 border-t border-line-soft pt-5 sm:flex-row sm:justify-end">
-          <Button type="button" variant="secondary" onClick={closeDialog} disabled={saving}>取消</Button>
-          <Button type="submit" disabled={saving || !draft.userId}>
+          <Button type="button" variant="secondary" onClick={closeDialog}>取消</Button>
+          <Button type="submit" disabled={!draft.userId}>
             {saving ? "加入中…" : "加入專案"}
           </Button>
         </div>
-      </form>
+      </MutationForm>
     </Modal>
   );
 }
