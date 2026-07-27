@@ -61,6 +61,8 @@ export default function ProjectDashboard() {
           </div>
         </Alert>
       ) : null}
+      {view.operationError ? <Alert tone="error" title="Issue 操作未完成">{view.operationError}</Alert> : null}
+      {view.notice ? <Alert tone="success">{view.notice}</Alert> : null}
 
       {view.selectedProject && !view.workflowReady ? (
         <Alert tone="error" title="工作流程尚未就緒">
@@ -101,6 +103,7 @@ export default function ProjectDashboard() {
             tasks={view.tasks}
             statusOptions={view.statusOptions}
             canEdit={canEditProject}
+            transitioningTaskIds={view.transitioningIssueIds}
             onSelectTask={selection.selectTask}
             onTransitionTask={view.transitionTask}
           />
@@ -111,8 +114,10 @@ export default function ProjectDashboard() {
         task={selection.selectedTask}
         team={view.team}
         statusOptions={view.statusOptions}
+        transitioning={view.transitioningIssueIds.includes(selection.selectedTask?.id)}
         onClose={selection.clearSelection}
         onUpdate={canEditProject ? view.updateTask : undefined}
+        onTransition={canEditProject ? view.transitionTask : undefined}
       />
     </div>
   );

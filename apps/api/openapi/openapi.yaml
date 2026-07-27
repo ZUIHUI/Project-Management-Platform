@@ -918,11 +918,15 @@ components:
         createdAt: { type: string, format: date-time }
     WorkflowStatus:
       type: object
-      required: [id, name, order]
+      required: [id, name, order, allowedToIds]
       properties:
         id: { type: string }
         name: { type: string }
         order: { type: integer }
+        allowedToIds:
+          type: array
+          uniqueItems: true
+          items: { type: string }
     BoardColumn:
       allOf:
         - $ref: '#/components/schemas/WorkflowStatus'

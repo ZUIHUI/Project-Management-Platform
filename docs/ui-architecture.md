@@ -35,6 +35,8 @@ flowchart TD
 
 - `pages/Tasks.jsx` 只負責路由、檢視模式與響應式組合；不得重新承擔 API 請求細節。
 - `features/issue/useIssueWorkspace.ts` 是專案 Issue 清單、詳情、留言、指派與狀態流轉的資料所有者。
+- Workflow status API 必須以 `allowedToIds` 發布每個狀態的合法目標；清單、看板、詳情與共用編輯器只投影這份契約，不得依陣列相鄰位置推測下一步。
+- 狀態 mutation 採逐 Issue pending guard；同一筆工作更新期間禁止重複送出，但不得鎖住其他 Issue。回應套用前需確認仍在原專案範圍，詳情開啟時成功與錯誤回饋必須留在詳情內可見。
 - `features/issue/useIssueRouteState.ts` 擁有 `?issue=` 深連結、行動版詳情開關、專案切換與清單／看板網址；切換檢視必須保留目前 Issue，移除選取時不得刪掉其他 query parameter。
 - 判定深連結無效前必須確認目前專案的 Issue collection 已解析完成；不得在初次載入 effect 尚未開始時，以初始空陣列移除有效的 `?issue=`。
 - 深連結指向不存在或不屬於目前專案的 Issue 時，需移除無效參數並顯示原地說明，不可讓網址與畫面靜默指向不同工作。
@@ -43,6 +45,7 @@ flowchart TD
 - 留言提及使用目前專案成員作為唯一候選範圍；詳情編輯器提供可鍵盤操作的成員切換按鈕並以結構化 `mentionedUserIds` 送出，後端再次驗證專案成員資格。歷史 `@姓名` 文字仍可解析中文與含空白姓名，但不得掃描或通知專案外帳號。
 - `BoardView` 是共用看板投影；全域與專案內看板不得各自維護另一套卡片與欄位實作。
 - `TaskDetailPanel` 是 Board、Calendar、Timeline 與專案總覽共用的詳情編輯器；草稿、欄位驗證、儲存狀態與未儲存離開確認不得散落到各 route page。
+- `TaskDetailPanel` 的一般欄位儲存與狀態流轉是兩個明確操作；狀態不得混入一般表單造成其中一段成功、另一段失敗的部分儲存。
 - `useProjectViewData` 必須分離專案清單與 Issue 載入狀態；切換專案時以請求序號忽略過期回應，避免舊專案資料覆蓋目前範圍。
 - Issue view model 保留 `assignee` ID 供 mutation 與指標關聯，另由 `projectMemberPresentation` 投影 `assigneeLabel` 給看板；卡片不得在已有成員姓名時顯示技術性 user ID。
 - 共用專案範圍載入失敗時由 `ProjectScopeSelector` 提供原地重試；固定專案總覽使用同一個 retry，不讓使用者只能重新整理整個瀏覽器。
@@ -153,6 +156,7 @@ flowchart TD
 - Issue view model、分組、指標與 mutation 一律使用契約的 `statusId`；中文 label 只用於呈現，不可再以 `Todo`、`In Progress`、`Done` 等顯示文字反查或提交狀態。
 - 標準 `todo`／`doing`／`done` 顯示為中文；契約提供的自訂狀態保留後端名稱與排序，讓新增工作流程不必修改元件。
 - 看板拖曳 payload、狀態選單 value 與詳情儲存皆傳穩定 ID；狀態名稱調整或本地化不得改變操作結果與洞察計算。
+- 看板下拉選單與拖放目標只允許目前狀態及其 `allowedToIds`；清單與詳情以帶目標名稱的「移至」按鈕呈現，讓滑鼠、觸控與鍵盤使用者都能理解下一步。
 
 ### Insights 交付洞察
 
@@ -198,7 +202,7 @@ flowchart TD
 - Modal 使用原生 `dialog`，支援 Esc、焦點管理、標題與描述關聯。
 - Modal 的 backdrop、Esc 與關閉按鈕必須共用同一個關閉請求；mutation 進行中可暫停關閉，且程式化關閉不得再次觸發 callback。含草稿的編輯器需在同一個 dialog 內提供未儲存提示與明確的保留／放棄操作。
 - 建立流程在窄螢幕不得以插入式長表單推移主要內容；優先使用共用 Modal，失敗時保留欄位輸入。
-- 看板除了拖曳，也提供狀態 `select`；Calendar、Gantt 與 Issue 卡片使用原生 button。
+- 看板除了合法目標拖曳，也提供只列出合法下一步的原生狀態 `select`；Calendar、Gantt 與 Issue 卡片使用原生 button。
 - 全域提供 skip link、focus-visible 樣式與 reduced-motion 規則。
 
 ## 擴充檢查

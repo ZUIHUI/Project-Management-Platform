@@ -3,7 +3,11 @@ import { getApiErrorMessage } from "../../shared/api/apiErrorPresentation.js";
 import { createLatestRequestGuard } from "../../shared/latestRequestGuard.js";
 import { canAccessProject, projectService } from "../project";
 import { issueService, type IssuePayload } from "./issueService";
-import { getWorkflowStatusLabel, isCoreWorkflowReady } from "./workflowPresentation.js";
+import {
+  getWorkflowStatusLabel,
+  getWorkflowTransitionTargets,
+  isCoreWorkflowReady,
+} from "./workflowPresentation.js";
 import type { components } from "../../shared/api/schema";
 
 type Project = components["schemas"]["Project"];
@@ -32,6 +36,7 @@ export const useIssueWorkspace = (routeProjectId?: string) => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [detailSaving, setDetailSaving] = useState(false);
+  const [transitioningIssueIds, setTransitioningIssueIds] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [createError, setCreateError] = useState("");
   const [detailError, setDetailError] = useState("");
@@ -42,6 +47,7 @@ export const useIssueWorkspace = (routeProjectId?: string) => {
   const selectedIssueIdRef = useRef(selectedIssueId);
   const issuesRequestGuardRef = useRef(createLatestRequestGuard());
   const detailRequestGuardRef = useRef(createLatestRequestGuard());
+  const transitioningIssueIdsRef = useRef(new Set<string>());
 
   useEffect(() => {
     projectIdRef.current = projectId;
@@ -206,34 +212,62 @@ export const useIssueWorkspace = (routeProjectId?: string) => {
     const currentStatus = statuses.find((status) => status.id === issue?.statusId);
     const nextStatus = statuses.find((status) => status.id === nextStatusId);
     if (!issue || !currentStatus || !nextStatus || currentStatus.id === nextStatus.id) return false;
+    if (!getWorkflowTransitionTargets(statuses, currentStatus.id).some((status) => status.id === nextStatus.id)) {
+      const message = `無法從「${getWorkflowStatusLabel(currentStatus)}」直接移至「${getWorkflowStatusLabel(nextStatus)}」。`;
+      if (selectedIssueIdRef.current === issueId) setDetailError(message);
+      else setError(message);
+      return false;
+    }
+    if (transitioningIssueIdsRef.current.has(issueId)) return false;
+
+    const requestProjectId = projectIdRef.current;
+    transitioningIssueIdsRef.current.add(issueId);
+    setTransitioningIssueIds((current) => (
+      current.includes(issueId) ? current : [...current, issueId]
+    ));
 
     setError("");
     setNotice("");
+    if (selectedIssueIdRef.current === issueId) {
+      setDetailError("");
+      setDetailNotice("");
+    }
     try {
       const response = await issueService.transitionIssueStatus(issue.id, nextStatus.id);
+      if (projectIdRef.current !== requestProjectId) return false;
       const updatedIssue = (response.data?.data ?? {
         ...issue,
         statusId: nextStatus.id,
         updatedAt: new Date().toISOString(),
       }) as Issue;
       setIssues((current) => current.map((item) => (item.id === issue.id ? updatedIssue : item)));
-      setNotice(`#${issue.number} 已移至「${getWorkflowStatusLabel(nextStatus)}」。`);
+      const message = `#${issue.number} 已移至「${getWorkflowStatusLabel(nextStatus)}」。`;
+      setNotice(message);
+      if (selectedIssueIdRef.current === issueId) {
+        await loadIssueDetails(issueId);
+        if (projectIdRef.current === requestProjectId && selectedIssueIdRef.current === issueId) {
+          setDetailNotice(message);
+        }
+      }
       return true;
     } catch (transitionError) {
-      setError(getApiErrorMessage(transitionError, "狀態更新失敗，請確認流程轉換規則。"));
-      await loadIssues(projectId);
+      if (projectIdRef.current !== requestProjectId) return false;
+      const message = getApiErrorMessage(transitionError, "狀態更新失敗，請確認流程轉換規則。");
+      await loadIssues(requestProjectId);
+      if (selectedIssueIdRef.current === issueId) {
+        await loadIssueDetails(issueId);
+        if (projectIdRef.current === requestProjectId && selectedIssueIdRef.current === issueId) {
+          setDetailError(message);
+        }
+      } else {
+        setError(message);
+      }
       return false;
+    } finally {
+      transitioningIssueIdsRef.current.delete(issueId);
+      setTransitioningIssueIds((current) => current.filter((id) => id !== issueId));
     }
-  }, [canUseWorkflow, issues, loadIssues, projectId, statuses]);
-
-  const moveIssue = useCallback(async (issueId: string, direction: number) => {
-    const issue = issues.find((item) => item.id === issueId);
-    if (!issue) return false;
-    const currentIndex = statuses.findIndex((status) => status.id === issue.statusId);
-    const nextStatus = statuses[currentIndex + direction];
-    if (currentIndex < 0 || !nextStatus) return false;
-    return transitionIssue(issue.id, nextStatus.id);
-  }, [issues, statuses, transitionIssue]);
+  }, [canUseWorkflow, issues, loadIssueDetails, loadIssues, statuses]);
 
   const assignIssue = useCallback(async (issueId: string, assigneeId: string) => {
     if (!canModify) return false;
@@ -329,6 +363,7 @@ export const useIssueWorkspace = (routeProjectId?: string) => {
     detailLoading,
     creating,
     detailSaving,
+    transitioningIssueIds,
     error,
     createError,
     detailError,
@@ -341,7 +376,6 @@ export const useIssueWorkspace = (routeProjectId?: string) => {
     reloadWorkspace,
     reloadDetails,
     createIssue,
-    moveIssue,
     transitionIssueStatus: transitionIssue,
     assignIssue,
     addComment,

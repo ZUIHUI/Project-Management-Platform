@@ -4,6 +4,7 @@ import { db, idFactory } from '../../infrastructure/persistence/index.js';
 import { STATUS } from '../../config/constants.js';
 import { prepareIssueUpdate } from './issueUpdate.js';
 import { findMentionedMemberIds, validateExplicitMentionIds } from './issueMention.js';
+import { buildWorkflowStatuses } from './issueWorkflow.js';
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 20;
@@ -154,15 +155,22 @@ const viewActivities = async (activities) => {
 };
 
 export const issueService = {
-  statuses: () => db.status.findMany({ orderBy: { order: 'asc' } }),
+  async statuses() {
+    const [statuses, transitions] = await Promise.all([
+      db.status.findMany({ orderBy: { order: 'asc' } }),
+      db.transition.findMany(),
+    ]);
+    return buildWorkflowStatuses(statuses, transitions);
+  },
 
   async board(projectId) {
-    const [statuses, issues] = await Promise.all([
+    const [statuses, transitions, issues] = await Promise.all([
       db.status.findMany({ orderBy: { order: 'asc' } }),
+      db.transition.findMany(),
       db.issue.findMany({ where: { projectId }, orderBy: [{ statusId: 'asc' }, { number: 'asc' }] }),
     ]);
 
-    return statuses.map((status) => ({
+    return buildWorkflowStatuses(statuses, transitions).map((status) => ({
       ...status,
       issues: issues.filter((issue) => issue.statusId === status.id).map(normalizeIssue),
     }));

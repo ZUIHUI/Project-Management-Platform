@@ -85,10 +85,12 @@ export default function Tasks({ viewMode = "list" }) {
     canModify: workspace.canModify,
     loading: workspace.detailLoading,
     saving: workspace.detailSaving,
+    transitioning: workspace.transitioningIssueIds.includes(workspace.selectedIssueId),
     error: workspace.detailError,
     notice: workspace.detailNotice,
     onAssign: workspace.assignIssue,
     onComment: workspace.addComment,
+    onTransition: workspace.transitionIssueStatus,
     onRetry: workspace.reloadDetails,
   };
 
@@ -161,6 +163,7 @@ export default function Tasks({ viewMode = "list" }) {
               tasks={boardTasks}
               statusOptions={statusOptions}
               selectedTaskId={workspace.selectedIssueId}
+              transitioningTaskIds={workspace.transitioningIssueIds}
               onTaskClick={(task) => routeState.selectIssue(task.id)}
               onStatusChange={workspace.canUseWorkflow ? workspace.transitionIssueStatus : undefined}
               showHeader={false}
@@ -173,7 +176,8 @@ export default function Tasks({ viewMode = "list" }) {
               selectedIssueId={workspace.selectedIssueId}
               canModify={workspace.canUseWorkflow}
               onSelect={routeState.selectIssue}
-              onMove={workspace.moveIssue}
+              onTransition={workspace.transitionIssueStatus}
+              transitioningIssueIds={workspace.transitioningIssueIds}
               onCreate={openCreateDialog}
             />
           )}

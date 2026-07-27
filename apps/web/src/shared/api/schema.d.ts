@@ -1542,6 +1542,7 @@ export interface components {
             id: string;
             name: string;
             order: number;
+            allowedToIds: string[];
         };
         BoardColumn: components["schemas"]["WorkflowStatus"] & {
             issues: components["schemas"]["Issue"][];

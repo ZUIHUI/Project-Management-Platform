@@ -4,6 +4,7 @@ import {
   buildWorkflowStatusOptions,
   getCanonicalWorkflowStatusId,
   getIssuePriorityPresentation,
+  getWorkflowTransitionTargets,
   getWorkflowStatusLabel,
   getWorkflowStatusTone,
   isCoreWorkflowReady,
@@ -17,10 +18,28 @@ test("standard workflow labels are localized without changing stable IDs", () =>
   ]);
 
   assert.deepEqual(options, [
-    { id: "todo", label: "待處理" },
-    { id: "doing", label: "進行中" },
-    { id: "done", label: "已完成" },
+    { id: "todo", label: "待處理", allowedToIds: ["doing"] },
+    { id: "doing", label: "進行中", allowedToIds: ["todo", "done"] },
+    { id: "done", label: "已完成", allowedToIds: ["doing"] },
   ]);
+});
+
+test("transition targets follow the API contract instead of array adjacency", () => {
+  const statuses = buildWorkflowStatusOptions([
+    { id: "todo", name: "Todo", allowedToIds: ["doing"] },
+    { id: "doing", name: "In Progress", allowedToIds: ["todo", "done"] },
+    { id: "done", name: "Done", allowedToIds: ["doing"] },
+  ]);
+
+  assert.deepEqual(
+    getWorkflowTransitionTargets(statuses, "todo").map((status) => status.id),
+    ["doing"],
+  );
+  assert.deepEqual(
+    getWorkflowTransitionTargets(statuses, "doing").map((status) => status.id),
+    ["todo", "done"],
+  );
+  assert.deepEqual(getWorkflowTransitionTargets(statuses, "unknown"), []);
 });
 
 test("custom workflow labels remain contract-backed", () => {
@@ -42,17 +61,22 @@ test("legacy display names normalize only in the presentation layer", () => {
 
 test("core workflow readiness requires every canonical status in contract order", () => {
   assert.equal(isCoreWorkflowReady([
-    { id: "todo", order: 1 },
-    { id: "doing", order: 2 },
-    { id: "done", order: 3 },
+    { id: "todo", order: 1, allowedToIds: ["doing"] },
+    { id: "doing", order: 2, allowedToIds: ["todo", "done"] },
+    { id: "done", order: 3, allowedToIds: ["doing"] },
   ]), true);
   assert.equal(isCoreWorkflowReady([
-    { id: "todo", order: 1 },
-    { id: "done", order: 2 },
+    { id: "todo", order: 1, allowedToIds: ["doing"] },
+    { id: "done", order: 2, allowedToIds: ["doing"] },
   ]), false);
   assert.equal(isCoreWorkflowReady([
-    { id: "todo", order: 2 },
-    { id: "doing", order: 1 },
-    { id: "done", order: 3 },
+    { id: "todo", order: 2, allowedToIds: ["doing"] },
+    { id: "doing", order: 1, allowedToIds: ["todo", "done"] },
+    { id: "done", order: 3, allowedToIds: ["doing"] },
+  ]), false);
+  assert.equal(isCoreWorkflowReady([
+    { id: "todo", order: 1 },
+    { id: "doing", order: 2, allowedToIds: ["todo", "done"] },
+    { id: "done", order: 3, allowedToIds: ["doing"] },
   ]), false);
 });

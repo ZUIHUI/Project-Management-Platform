@@ -6,6 +6,12 @@ const STANDARD_STATUS_PRESENTATION = Object.freeze({
 
 const CORE_WORKFLOW_STATUS_ORDER = Object.freeze(["todo", "doing", "done"]);
 
+const CORE_WORKFLOW_TRANSITIONS = Object.freeze({
+  todo: Object.freeze(["doing"]),
+  doing: Object.freeze(["todo", "done"]),
+  done: Object.freeze(["doing"]),
+});
+
 const STATUS_ALIASES = Object.freeze({
   todo: "todo",
   "to do": "todo",
@@ -39,7 +45,11 @@ export const getCanonicalWorkflowStatusId = (status) => {
 
 export const isCoreWorkflowReady = (statuses = []) => (
   CORE_WORKFLOW_STATUS_ORDER.every((id, index) => (
-    statuses.some((status) => status?.id === id && status?.order === index + 1)
+    statuses.some((status) => (
+      status?.id === id
+      && status?.order === index + 1
+      && Array.isArray(status.allowedToIds)
+    ))
   ))
 );
 
@@ -72,14 +82,28 @@ export const ISSUE_PRIORITY_OPTIONS = Object.freeze(
   ["low", "medium", "high"].map((id) => Object.freeze({ id, label: PRIORITY_PRESENTATION[id].label })),
 );
 
-export const buildWorkflowStatusOptions = (statuses = []) => statuses.map((status) => ({
-  id: status.id,
-  label: getWorkflowStatusLabel(status),
-}));
+export const buildWorkflowStatusOptions = (statuses = []) => statuses.map((status) => {
+  const canonicalId = getCanonicalWorkflowStatusId(status.id) ?? getCanonicalWorkflowStatusId(status.name);
+  return {
+    id: status.id,
+    label: getWorkflowStatusLabel(status),
+    allowedToIds: Array.isArray(status.allowedToIds)
+      ? [...new Set(status.allowedToIds)]
+      : [...(CORE_WORKFLOW_TRANSITIONS[canonicalId] ?? [])],
+  };
+});
+
+export const getWorkflowTransitionTargets = (statuses = [], currentStatusId) => {
+  const currentStatus = statuses.find((status) => status.id === currentStatusId);
+  if (!currentStatus || !Array.isArray(currentStatus.allowedToIds)) return [];
+  const allowedToIds = new Set(currentStatus.allowedToIds);
+  return statuses.filter((status) => status.id !== currentStatusId && allowedToIds.has(status.id));
+};
 
 export const DEFAULT_WORKFLOW_STATUS_OPTIONS = Object.freeze(
   Object.entries(STANDARD_STATUS_PRESENTATION).map(([id, presentation]) => Object.freeze({
     id,
     label: presentation.label,
+    allowedToIds: CORE_WORKFLOW_TRANSITIONS[id],
   })),
 );

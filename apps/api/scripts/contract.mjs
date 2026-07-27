@@ -31,6 +31,19 @@ const run = async () => {
     assert.ok(token);
     const auth = { Authorization: `Bearer ${token}` };
 
+    const statusesRes = await fetch(`${baseUrl}/workflows/statuses`, { headers: auth });
+    assert.equal(statusesRes.status, 200);
+    const statuses = (await statusesRes.json()).data;
+    assert.deepEqual(
+      statuses.map(({ id, allowedToIds }) => ({ id, allowedToIds })),
+      [
+        { id: "todo", allowedToIds: ["doing"] },
+        { id: "doing", allowedToIds: ["todo", "done"] },
+        { id: "done", allowedToIds: ["doing"] },
+      ],
+      "workflow status contract must publish the legal next states",
+    );
+
     const createIssueRes = await fetch(`${baseUrl}/projects/proj-1/issues`, {
       method: "POST",
       headers: { ...auth, "content-type": "application/json" },

@@ -7,15 +7,23 @@ import { cn } from "./ui/styles";
 import {
   DEFAULT_WORKFLOW_STATUS_OPTIONS,
   getIssuePriorityPresentation,
+  getWorkflowTransitionTargets,
 } from "../features/issue/workflowPresentation.js";
 
 const formatDate = (value) => new Intl.DateTimeFormat("zh-TW", { month: "short", day: "numeric" }).format(new Date(value));
 
-function TaskCard({ task, statuses, selected, onTaskClick, onTaskMove }) {
+function TaskCard({ task, statuses, selected, transitioning, onTaskClick, onTaskMove }) {
+  const currentStatus = statuses.find((status) => status.id === task.statusId);
+  const transitionTargets = getWorkflowTransitionTargets(statuses, task.statusId);
+  const selectableStatuses = currentStatus ? [currentStatus, ...transitionTargets] : transitionTargets;
   const [{ dragging }, drag] = useDrag({
     type: "TASK",
-    item: { id: task.id, statusId: task.statusId },
-    canDrag: Boolean(onTaskMove),
+    item: {
+      id: task.id,
+      statusId: task.statusId,
+      allowedToIds: transitionTargets.map((status) => status.id),
+    },
+    canDrag: Boolean(onTaskMove && !transitioning && transitionTargets.length),
     collect: (monitor) => ({ dragging: monitor.isDragging() }),
   });
   const priority = getIssuePriorityPresentation(task.priority);
@@ -23,6 +31,7 @@ function TaskCard({ task, statuses, selected, onTaskClick, onTaskMove }) {
   return (
     <article
       ref={drag}
+      aria-busy={transitioning || undefined}
       className={cn(
         "rounded-card border bg-canvas p-4 transition-shadow hover:shadow-soft",
         selected ? "border-brand shadow-soft" : "border-line",
@@ -30,7 +39,7 @@ function TaskCard({ task, statuses, selected, onTaskClick, onTaskMove }) {
       )}
     >
       <div className="flex items-start gap-3">
-        {onTaskMove ? <GripVertical className="mt-0.5 shrink-0 cursor-grab text-muted" size={18} aria-hidden="true" /> : null}
+        {onTaskMove ? <GripVertical className={cn("mt-0.5 shrink-0 text-muted", transitioning || !transitionTargets.length ? "cursor-not-allowed opacity-50" : "cursor-grab")} size={18} aria-hidden="true" /> : null}
         {onTaskClick ? <button type="button" onClick={() => onTaskClick(task)} aria-pressed={selected} className="min-h-11 min-w-0 flex-1 rounded-control text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
           <p className="text-xs font-mono text-muted">#{task.number}</p>
           <h4 className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-ink">{task.title}</h4>
@@ -44,29 +53,44 @@ function TaskCard({ task, statuses, selected, onTaskClick, onTaskMove }) {
         <p className="mt-3 flex items-center gap-1.5 text-xs text-muted"><CalendarClock size={14} aria-hidden="true" />{formatDate(task.dueDate)}</p>
       ) : null}
       {onTaskMove ? <label className="mt-4 block border-t border-line-soft pt-3 text-xs text-muted">
-        <span className="sr-only">移動「{task.title}」到其他狀態</span>
+        <span className="mb-2 flex min-h-5 items-center justify-between gap-2">
+          <span className="font-semibold text-body">可用下一步</span>
+          {transitioning ? <span className="font-semibold text-brand" role="status">狀態更新中…</span> : null}
+        </span>
         <select
-          aria-label={`移動「${task.title}」到其他狀態`}
+          aria-label={`移動「${task.title}」到合法狀態`}
           value={task.statusId}
+          disabled={transitioning || !transitionTargets.length}
           onChange={(event) => onTaskMove(task, event.target.value)}
           className="min-h-11 w-full rounded-control border border-line bg-canvas px-3 text-xs font-semibold text-ink outline-none focus:border-brand focus:ring-1 focus:ring-brand"
         >
-          {statuses.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
+          {selectableStatuses.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
         </select>
       </label> : null}
     </article>
   );
 }
 
-function StatusColumn({ status, tasks, statuses, selectedTaskId, onTaskClick, onTaskMove }) {
+function StatusColumn({ status, tasks, statuses, selectedTaskId, transitioningTasks, onTaskClick, onTaskMove }) {
   const headingId = `board-${encodeURIComponent(status.id)}`;
   const [{ over }, drop] = useDrop({
     accept: "TASK",
-    canDrop: () => Boolean(onTaskMove),
+    canDrop: (item) => Boolean(
+      onTaskMove
+      && item.statusId !== status.id
+      && item.allowedToIds?.includes(status.id)
+      && !transitioningTasks.has(item.id)
+    ),
     drop: (item) => {
-      if (item.statusId !== status.id) onTaskMove?.(item, status.id);
+      if (
+        item.statusId !== status.id
+        && item.allowedToIds?.includes(status.id)
+        && !transitioningTasks.has(item.id)
+      ) {
+        onTaskMove?.(item, status.id);
+      }
     },
-    collect: (monitor) => ({ over: monitor.isOver() }),
+    collect: (monitor) => ({ over: monitor.isOver() && monitor.canDrop() }),
   });
 
   return (
@@ -76,18 +100,38 @@ function StatusColumn({ status, tasks, statuses, selectedTaskId, onTaskClick, on
         <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-surface-strong px-2 font-mono text-xs text-body">{tasks.length}</span>
       </div>
       <div className="mt-2 space-y-3">
-        {tasks.map((task) => <TaskCard key={task.id} task={task} statuses={statuses} selected={selectedTaskId === task.id} onTaskClick={onTaskClick} onTaskMove={onTaskMove} />)}
+        {tasks.map((task) => (
+          <TaskCard
+            key={task.id}
+            task={task}
+            statuses={statuses}
+            selected={selectedTaskId === task.id}
+            transitioning={transitioningTasks.has(task.id)}
+            onTaskClick={onTaskClick}
+            onTaskMove={onTaskMove}
+          />
+        ))}
         {!tasks.length ? <EmptyState compact icon={Inbox} title="此欄目前沒有工作" /> : null}
       </div>
     </section>
   );
 }
 
-export default function BoardView({ projectId, tasks = [], statusOptions = DEFAULT_WORKFLOW_STATUS_OPTIONS, selectedTaskId, onTaskClick, onStatusChange, showHeader = true }) {
+export default function BoardView({
+  projectId,
+  tasks = [],
+  statusOptions = DEFAULT_WORKFLOW_STATUS_OPTIONS,
+  selectedTaskId,
+  transitioningTaskIds = [],
+  onTaskClick,
+  onStatusChange,
+  showHeader = true,
+}) {
   const groupedTasks = useMemo(
     () => Object.fromEntries(statusOptions.map((status) => [status.id, tasks.filter((task) => task.statusId === status.id)])),
     [statusOptions, tasks],
   );
+  const transitioningTasks = useMemo(() => new Set(transitioningTaskIds), [transitioningTaskIds]);
   const handleTaskMove = onStatusChange ? (task, newStatus) => onStatusChange(task.id, newStatus) : undefined;
 
   if (!statusOptions.length) {
@@ -108,7 +152,18 @@ export default function BoardView({ projectId, tasks = [], statusOptions = DEFAU
         {showHeader ? <CardHeader title={`工作看板${projectId ? ` · ${projectId}` : ""}`} description={onStatusChange ? "拖曳卡片或使用卡片下方選單調整工作狀態。" : "以欄位檢視工作狀態；目前為唯讀模式。"} /> : null}
         <div className="overflow-x-auto rounded-control p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand sm:p-5" tabIndex="0" aria-label="工作看板，可水平捲動">
           <div className="flex min-w-max gap-4">
-            {statusOptions.map((status) => <StatusColumn key={status.id} status={status} statuses={statusOptions} tasks={groupedTasks[status.id] ?? []} selectedTaskId={selectedTaskId} onTaskClick={onTaskClick} onTaskMove={handleTaskMove} />)}
+            {statusOptions.map((status) => (
+              <StatusColumn
+                key={status.id}
+                status={status}
+                statuses={statusOptions}
+                tasks={groupedTasks[status.id] ?? []}
+                selectedTaskId={selectedTaskId}
+                transitioningTasks={transitioningTasks}
+                onTaskClick={onTaskClick}
+                onTaskMove={handleTaskMove}
+              />
+            ))}
           </div>
         </div>
       </Card>

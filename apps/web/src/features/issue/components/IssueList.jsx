@@ -1,11 +1,12 @@
-import { ChevronLeft, ChevronRight, ListChecks, Search } from "lucide-react";
+import { ListChecks, Search } from "lucide-react";
 import { Badge, Button, Card, CardHeader, EmptyState } from "../../../components/ui";
-import { buttonClass, cn } from "../../../components/ui/styles";
+import { cn } from "../../../components/ui/styles";
 import {
   getIssuePriorityPresentation,
   getWorkflowStatusLabel,
   getWorkflowStatusTone,
 } from "../workflowPresentation.js";
+import WorkflowTransitionActions from "./WorkflowTransitionActions";
 
 export default function IssueList({
   issues,
@@ -14,10 +15,12 @@ export default function IssueList({
   selectedIssueId,
   canModify,
   onSelect,
-  onMove,
+  onTransition,
+  transitioningIssueIds = [],
   onCreate,
 }) {
   const statusById = new Map(statuses.map((status) => [status.id, status]));
+  const transitioningIssues = new Set(transitioningIssueIds);
 
   return (
     <Card>
@@ -26,7 +29,6 @@ export default function IssueList({
         <div className="divide-y divide-line-soft">
           {issues.map((issue) => {
             const currentStatus = statusById.get(issue.statusId);
-            const currentStatusIndex = statuses.findIndex((status) => status.id === issue.statusId);
             const priority = getIssuePriorityPresentation(issue.priority);
 
             return (
@@ -51,28 +53,15 @@ export default function IssueList({
                   </span>
                 </button>
 
-                {canModify ? (
-                  <div className="flex shrink-0 justify-end gap-1" aria-label={`移動 Issue #${issue.number}`}>
-                    <button
-                      type="button"
-                      aria-label={`將 Issue #${issue.number} 移至上一個狀態`}
-                      disabled={currentStatusIndex <= 0}
-                      onClick={() => onMove(issue.id, -1)}
-                      className={buttonClass({ variant: "ghost", size: "sm", className: "h-11 min-h-11 w-11 px-0" })}
-                    >
-                      <ChevronLeft size={17} aria-hidden="true" />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={`將 Issue #${issue.number} 移至下一個狀態`}
-                      disabled={currentStatusIndex < 0 || currentStatusIndex >= statuses.length - 1}
-                      onClick={() => onMove(issue.id, 1)}
-                      className={buttonClass({ variant: "ghost", size: "sm", className: "h-11 min-h-11 w-11 px-0" })}
-                    >
-                      <ChevronRight size={17} aria-hidden="true" />
-                    </button>
-                  </div>
-                ) : null}
+                <WorkflowTransitionActions
+                  issue={issue}
+                  statuses={statuses}
+                  canModify={canModify}
+                  pending={transitioningIssues.has(issue.id)}
+                  onTransition={onTransition}
+                  compact
+                  className="shrink-0 sm:max-w-72"
+                />
               </article>
             );
           })}

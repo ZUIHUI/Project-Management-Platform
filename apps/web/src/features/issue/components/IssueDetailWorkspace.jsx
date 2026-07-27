@@ -11,6 +11,7 @@ import {
   getWorkflowStatusLabel,
   getWorkflowStatusTone,
 } from "../workflowPresentation.js";
+import WorkflowTransitionActions from "./WorkflowTransitionActions";
 
 const formatDateTime = (value) => (
   value ? new Intl.DateTimeFormat("zh-TW", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "時間未知"
@@ -33,10 +34,12 @@ function IssueDetailContent({
   canModify,
   loading,
   saving,
+  transitioning,
   error,
   notice,
   onAssign,
   onComment,
+  onTransition,
   onRetry,
 }) {
   const [commentDraft, setCommentDraft] = useState("");
@@ -95,6 +98,14 @@ function IssueDetailContent({
           <Badge tone={priority.tone}>{priority.label}</Badge>
         </div>
       </section>
+
+      <WorkflowTransitionActions
+        issue={issue}
+        statuses={statuses}
+        canModify={canModify}
+        pending={transitioning}
+        onTransition={onTransition}
+      />
 
       <FormField label="指派成員" htmlFor={`issue-assignee-${issue.id}`}>
         <select
@@ -216,7 +227,7 @@ export default function IssueDetailWorkspace({ mode = "aside", isOpen, onClose, 
         isOpen={Boolean(isOpen && issue)}
         onClose={onClose}
         title={issue ? `#${issue.number} ${issue.title}` : "Issue 詳細資訊"}
-        description="指派、討論與最近活動"
+        description="狀態、指派、討論與最近活動"
         maxWidth="max-w-2xl"
       >
         <IssueDetailContent {...contentProps} />
@@ -226,7 +237,7 @@ export default function IssueDetailWorkspace({ mode = "aside", isOpen, onClose, 
 
   return (
     <Card as="aside" aria-label="Issue 詳細資訊" className="h-fit xl:sticky xl:top-6">
-      <CardHeader title="Issue 詳情" description="指派、討論與最近活動" />
+      <CardHeader title="Issue 詳情" description="狀態、指派、討論與最近活動" />
       <div className={issue ? "p-5 sm:p-6" : ""}>
         <IssueDetailContent {...contentProps} />
       </div>

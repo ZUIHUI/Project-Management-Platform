@@ -4,7 +4,12 @@ import { canAccessProject, projectService } from "../project";
 import { buildProjectMemberLabelMap } from "../project/projectMemberPresentation";
 import { isIssueCollectionPending } from "./issueRouteState.js";
 import { issueService } from "./issueService";
-import { buildWorkflowStatusOptions, isCoreWorkflowReady } from "./workflowPresentation.js";
+import {
+  buildWorkflowStatusOptions,
+  getWorkflowStatusLabel,
+  getWorkflowTransitionTargets,
+  isCoreWorkflowReady,
+} from "./workflowPresentation.js";
 import type { components } from "../../shared/api/schema";
 
 type Project = components["schemas"]["Project"];
@@ -35,8 +40,19 @@ export const useProjectViewData = (fixedProjectId?: string | null) => {
   const [issuesResolvedProjectId, setIssuesResolvedProjectId] = useState("");
   const [projectError, setProjectError] = useState("");
   const [issueError, setIssueError] = useState("");
+  const [operationError, setOperationError] = useState("");
+  const [issueNotice, setIssueNotice] = useState("");
+  const [transitioningIssueIds, setTransitioningIssueIds] = useState<string[]>([]);
   const [scopeRetryNonce, setScopeRetryNonce] = useState(0);
   const issueRequestId = useRef(0);
+  const selectedProjectIdRef = useRef(selectedProjectId);
+  const transitioningIssueIdsRef = useRef(new Set<string>());
+
+  useEffect(() => {
+    selectedProjectIdRef.current = selectedProjectId;
+    setOperationError("");
+    setIssueNotice("");
+  }, [selectedProjectId]);
 
   useEffect(() => {
     setSelectedProjectId(fixedProjectId ?? "");
@@ -50,6 +66,8 @@ export const useProjectViewData = (fixedProjectId?: string | null) => {
       setIssues([]);
       setIssuesResolvedProjectId("");
       setIssueError("");
+      setOperationError("");
+      setIssueNotice("");
       setLoadingIssues(false);
       setLoadingProjects(true);
       setProjectError("");
@@ -96,6 +114,7 @@ export const useProjectViewData = (fixedProjectId?: string | null) => {
 
     setLoadingIssues(true);
     setIssueError("");
+    setIssueNotice("");
     try {
       const response = await issueService.fetchIssuesByProject(projectId, { page: 1, pageSize: 100 });
       if (requestId === issueRequestId.current) {
@@ -146,6 +165,7 @@ export const useProjectViewData = (fixedProjectId?: string | null) => {
 
   const statusOptions = useMemo(() => buildWorkflowStatusOptions(statuses), [statuses]);
   const workflowReady = useMemo(() => isCoreWorkflowReady(statuses), [statuses]);
+  const canUseWorkflow = canWrite && workflowReady;
 
   const team = useMemo<ProjectTeamMemberView[]>(
     () =>
@@ -160,30 +180,58 @@ export const useProjectViewData = (fixedProjectId?: string | null) => {
 
   const transitionTask = useCallback(
     async (issueId: string, nextStatusId: string, throwOnError = false) => {
+      if (!canWrite || !workflowReady) return false;
       const target = statuses.find((status) => status.id === nextStatusId);
       if (!target) {
-        setIssueError(`找不到目標狀態「${nextStatusId}」。`);
-        return;
+        const error = new Error(`找不到目標狀態「${nextStatusId}」。`);
+        setOperationError(error.message);
+        if (throwOnError) throw error;
+        return false;
       }
 
       const current = issues.find((issue) => issue.id === issueId);
-      if (!current || current.statusId === target.id) return;
+      if (!current || current.statusId === target.id) return false;
+      if (!getWorkflowTransitionTargets(statuses, current.statusId).some((status) => status.id === target.id)) {
+        const error = new Error("此狀態轉換不在目前工作流程中。");
+        setOperationError(error.message);
+        if (throwOnError) throw error;
+        return false;
+      }
+      if (transitioningIssueIdsRef.current.has(issueId)) return false;
+
+      const requestProjectId = selectedProjectIdRef.current;
+      transitioningIssueIdsRef.current.add(issueId);
+      setTransitioningIssueIds((items) => items.includes(issueId) ? items : [...items, issueId]);
+      setOperationError("");
+      setIssueNotice("");
 
       try {
         const response = await issueService.transitionIssueStatus(issueId, target.id);
+        if (selectedProjectIdRef.current !== requestProjectId) return false;
         const updated = (response.data?.data ?? { ...current, statusId: target.id }) as Issue;
         setIssues((items) => items.map((item) => (item.id === issueId ? updated : item)));
+        setIssueNotice(`#${current.number} 已移至「${getWorkflowStatusLabel(target)}」。`);
+        return true;
       } catch (transitionError) {
-        setIssueError(getApiErrorMessage(transitionError, "狀態更新失敗，已重新整理最新資料。"));
+        if (selectedProjectIdRef.current !== requestProjectId) return false;
+        const message = getApiErrorMessage(transitionError, "狀態更新失敗，已重新整理最新資料。");
+        await loadIssues(requestProjectId);
+        if (selectedProjectIdRef.current === requestProjectId) setOperationError(message);
         if (throwOnError) throw transitionError;
-        await loadIssues(selectedProjectId);
+        return false;
+      } finally {
+        transitioningIssueIdsRef.current.delete(issueId);
+        setTransitioningIssueIds((items) => items.filter((id) => id !== issueId));
       }
     },
-    [issues, loadIssues, selectedProjectId, statuses],
+    [canWrite, issues, loadIssues, statuses, workflowReady],
   );
 
   const updateTask = useCallback(
     async (task: ProjectTaskView) => {
+      const requestProjectId = selectedProjectIdRef.current;
+      setOperationError("");
+      setIssueNotice("");
       try {
         const response = await issueService.updateIssue(task.id, {
           title: task.title,
@@ -192,22 +240,22 @@ export const useProjectViewData = (fixedProjectId?: string | null) => {
           assigneeId: task.assignee || null,
           dueAt: task.dueDate,
         });
+        if (selectedProjectIdRef.current !== requestProjectId) return false;
         const updated = response.data?.data as Issue | undefined;
         if (updated) {
           setIssues((items) => items.map((item) => (item.id === task.id ? updated : item)));
         }
-
-        const current = issues.find((issue) => issue.id === task.id);
-        if (current && task.statusId !== current.statusId) {
-          await transitionTask(task.id, task.statusId, true);
-        }
+        setIssueNotice(`#${task.number} 的內容已更新。`);
+        return true;
       } catch (updateError) {
-        setIssueError(getApiErrorMessage(updateError, "Issue 更新失敗，已重新整理最新資料。"));
-        await loadIssues(selectedProjectId);
+        if (selectedProjectIdRef.current !== requestProjectId) return false;
+        const message = getApiErrorMessage(updateError, "Issue 更新失敗，已重新整理最新資料。");
+        await loadIssues(requestProjectId);
+        if (selectedProjectIdRef.current === requestProjectId) setOperationError(message);
         throw updateError;
       }
     },
-    [issues, loadIssues, selectedProjectId, transitionTask],
+    [loadIssues],
   );
 
   return {
@@ -219,11 +267,15 @@ export const useProjectViewData = (fixedProjectId?: string | null) => {
     selectedProjectId,
     setSelectedProjectId,
     canWrite,
+    canUseWorkflow,
     tasks,
     team,
     loading: loadingProjects || issuesPending,
     scopeLoading: loadingProjects,
     error: projectError || issueError,
+    operationError,
+    notice: issueNotice,
+    transitioningIssueIds,
     reload: () => loadIssues(selectedProjectId),
     retry: projectError || !workflowReady
       ? () => setScopeRetryNonce((current) => current + 1)

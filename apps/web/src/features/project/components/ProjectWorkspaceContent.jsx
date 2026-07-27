@@ -10,6 +10,7 @@ export default function ProjectWorkspaceContent({
   tasks,
   statusOptions,
   canEdit,
+  transitioningTaskIds,
   onSelectTask,
   onTransitionTask,
 }) {
@@ -28,6 +29,7 @@ export default function ProjectWorkspaceContent({
           projectId={project.name}
           tasks={tasks}
           statusOptions={statusOptions}
+          transitioningTaskIds={transitioningTaskIds}
           onTaskClick={selectTask}
           onStatusChange={canEdit ? onTransitionTask : undefined}
           showHeader={false}

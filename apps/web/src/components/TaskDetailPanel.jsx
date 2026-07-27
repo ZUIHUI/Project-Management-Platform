@@ -11,6 +11,7 @@ import {
   getWorkflowStatusLabel,
   getWorkflowStatusTone,
 } from "../features/issue/workflowPresentation.js";
+import WorkflowTransitionActions from "../features/issue/components/WorkflowTransitionActions";
 
 const toDateInputValue = (value) => {
   if (!value) return "";
@@ -21,19 +22,29 @@ const toDateInputValue = (value) => {
 const createTaskDraft = (task) => ({
   title: task?.title ?? "",
   description: task?.description ?? "",
-  statusId: task?.statusId ?? "todo",
   priority: task?.priority ?? "medium",
   assignee: task?.assignee ?? "",
   dueDate: toDateInputValue(task?.dueDate),
 });
 
-export default function TaskDetailPanel({ task, onClose, onUpdate, team = [], statusOptions = DEFAULT_WORKFLOW_STATUS_OPTIONS }) {
+export default function TaskDetailPanel({
+  task,
+  onClose,
+  onUpdate,
+  onTransition,
+  transitioning = false,
+  team = [],
+  statusOptions = DEFAULT_WORKFLOW_STATUS_OPTIONS,
+}) {
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [transitionError, setTransitionError] = useState("");
+  const [transitionNotice, setTransitionNotice] = useState("");
   const [titleError, setTitleError] = useState("");
   const [discardIntent, setDiscardIntent] = useState(null);
   const [formData, setFormData] = useState(() => createTaskDraft(task));
+  const taskIdentityRef = useRef(task?.id);
   const discardPromptRef = useRef(null);
   const titleInputRef = useRef(null);
   const canEdit = typeof onUpdate === "function";
@@ -46,9 +57,15 @@ export default function TaskDetailPanel({ task, onClose, onUpdate, team = [], st
   const priority = getIssuePriorityPresentation(task?.priority);
 
   useEffect(() => {
+    const changedTask = taskIdentityRef.current !== task?.id;
+    taskIdentityRef.current = task?.id;
     setFormData(createTaskDraft(task));
     setIsEditing(false);
     setSaveError("");
+    if (changedTask) {
+      setTransitionError("");
+      setTransitionNotice("");
+    }
     setTitleError("");
     setDiscardIntent(null);
   }, [task]);
@@ -90,6 +107,20 @@ export default function TaskDetailPanel({ task, onClose, onUpdate, team = [], st
       setSaveError(getApiErrorMessage(error, "Issue 儲存失敗，請稍後再試。"));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleTransition = async (issueId, statusId) => {
+    const target = statusOptions.find((status) => status.id === statusId);
+    setTransitionError("");
+    setTransitionNotice("");
+    try {
+      const changed = await onTransition(issueId, statusId, true);
+      if (changed !== false) setTransitionNotice(`Issue 已移至「${target?.label ?? statusId}」。`);
+      return changed;
+    } catch (error) {
+      setTransitionError(getApiErrorMessage(error, "狀態更新失敗，請稍後再試。"));
+      return false;
     }
   };
 
@@ -136,6 +167,8 @@ export default function TaskDetailPanel({ task, onClose, onUpdate, team = [], st
       {task ? (
         <div className="space-y-6">
           {saveError ? <Alert tone="error" title="無法儲存變更">{saveError}</Alert> : null}
+          {transitionError ? <Alert tone="error" title="無法更新狀態">{transitionError}</Alert> : null}
+          {transitionNotice ? <Alert tone="success">{transitionNotice}</Alert> : null}
           {discardIntent ? (
             <div ref={discardPromptRef} tabIndex={-1} className="focus:outline-none">
               <Alert tone="info" title="尚有未儲存變更">
@@ -169,11 +202,6 @@ export default function TaskDetailPanel({ task, onClose, onUpdate, team = [], st
                 <FormField label="描述" htmlFor="task-description" className="sm:col-span-2">
                   <textarea id="task-description" rows={4} className={cn(inputClass, "min-h-28 py-3")} value={formData.description} disabled={saving} onChange={(event) => handleInputChange("description", event.target.value)} />
                 </FormField>
-                <FormField label="狀態" htmlFor="task-status">
-                  <select id="task-status" className={inputClass} value={formData.statusId} disabled={saving} onChange={(event) => handleInputChange("statusId", event.target.value)}>
-                    {statusOptions.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
-                  </select>
-                </FormField>
                 <FormField label="優先順序" htmlFor="task-priority">
                   <select id="task-priority" className={inputClass} value={formData.priority} disabled={saving} onChange={(event) => handleInputChange("priority", event.target.value)}>
                     {ISSUE_PRIORITY_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
@@ -200,6 +228,13 @@ export default function TaskDetailPanel({ task, onClose, onUpdate, team = [], st
                 <Badge tone={getWorkflowStatusTone(task.statusId, statusOptions)}>{currentStatus?.label ?? getWorkflowStatusLabel(task.statusId)}</Badge>
                 <Badge tone={priority.tone}>{priority.label}</Badge>
               </div>
+              <WorkflowTransitionActions
+                issue={task}
+                statuses={statusOptions}
+                canModify={typeof onTransition === "function"}
+                pending={transitioning}
+                onTransition={handleTransition}
+              />
               <section>
                 <h3 className="text-sm font-semibold text-ink">描述</h3>
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-body">{task.description || "尚未提供描述。"}</p>
