@@ -136,6 +136,7 @@ flowchart TD
 - `AuthLayout` 統一設定登入與註冊頁的 document title，避免登出後殘留上一個工作區 route 的頁面名稱。
 - 註冊必須要求確認密碼並在送出前比對；欄位變更時清除已過時錯誤，提交期間鎖定重複操作。
 - Login／Register 的本地驗證與可定位 API 錯誤使用 `FormField` 顯示在對應欄位，設定 `aria-invalid`／`aria-describedby` 並聚焦第一個錯誤；無法安全歸屬單一欄位的登入失敗才使用表單 Alert。
+- Login、Register 與密碼設定共用 `PasswordInput`；顯示／隱藏控制需保留 44px 操作目標、明確的 `aria-pressed` 狀態與原有 autocomplete。認證請求進行中鎖定當次表單欄位並標示 busy，避免畫面值與已送出憑證不同步。
 - route guard 透過同一個 auth external store 訂閱登入狀態；transport 在 access token 過期或受保護契約回傳 401 時，以 single-flight refresh 避免平行請求重複換發並重送原請求。refresh token 過期、撤銷或回傳 401 才清除整組 session；網路／伺服器暫時失敗保留 session 供重試，避免失效 token 把訪客頁擋回持續報錯的登入後頁面。
 - 不可恢復的 session 需在登入頁說明已過期，並透過 route state 保留原始受保護路徑；重新登入成功後返回中斷位置。手動登出與首次訪問登入頁不得誤顯示過期提示。
 

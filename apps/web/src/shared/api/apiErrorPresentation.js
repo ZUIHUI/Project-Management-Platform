@@ -50,7 +50,7 @@ export const getApiErrorMessage = (error, fallback) => {
   if (status === 403) return "你沒有執行這項操作的權限。";
   if (status === 429) return "操作過於頻繁，請稍後再試。";
   if ((status && status >= 500) || networkMessagePattern.test(message)) {
-    return "目前無法連線至平台服務，請稍後重新整理。";
+    return "目前無法連線至平台服務，請稍後再試。";
   }
   if (message && containsCjk(message)) return message;
   return fallback;

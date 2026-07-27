@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { KeyRound } from "lucide-react";
 import { Alert, Button, Card, CardHeader, FormField } from "../../../components/ui";
-import { inputClass } from "../../../components/ui/styles";
+import PasswordInput from "./PasswordInput";
 import { PASSWORD_POLICY_TEXT, validatePasswordChangeInput } from "../credentialValidation";
 
 const emptyDraft = { currentPassword: "", newPassword: "", confirmPassword: "" };
@@ -59,13 +59,13 @@ export default function PasswordSettingsCard({ saving, error, errorField, onClea
         {error && !errorField ? <Alert tone="error" title="無法更新密碼" className="sm:col-span-2">{error}</Alert> : null}
 
         <FormField label="目前密碼" htmlFor="current-password" error={currentPasswordError} required className="sm:col-span-2">
-          {({ describedBy, invalid }) => <input ref={currentPasswordRef} id="current-password" type="password" autoComplete="current-password" className={inputClass} value={draft.currentPassword} aria-describedby={describedBy} aria-invalid={invalid} onChange={(event) => updateDraft("currentPassword", event.target.value)} disabled={saving} required />}
+          {({ describedBy, invalid }) => <PasswordInput ref={currentPasswordRef} id="current-password" autoComplete="current-password" value={draft.currentPassword} aria-describedby={describedBy} aria-invalid={invalid} onChange={(event) => updateDraft("currentPassword", event.target.value)} disabled={saving} required />}
         </FormField>
         <FormField label="新密碼" htmlFor="new-password" hint={PASSWORD_POLICY_TEXT} error={newPasswordError} required>
-          {({ describedBy, invalid }) => <input ref={newPasswordRef} id="new-password" type="password" autoComplete="new-password" className={inputClass} value={draft.newPassword} aria-describedby={describedBy} aria-invalid={invalid} onChange={(event) => updateDraft("newPassword", event.target.value)} minLength={8} maxLength={64} disabled={saving} required />}
+          {({ describedBy, invalid }) => <PasswordInput ref={newPasswordRef} id="new-password" autoComplete="new-password" value={draft.newPassword} aria-describedby={describedBy} aria-invalid={invalid} onChange={(event) => updateDraft("newPassword", event.target.value)} minLength={8} maxLength={64} disabled={saving} required />}
         </FormField>
         <FormField label="確認新密碼" htmlFor="confirm-password" error={confirmPasswordError} required>
-          {({ describedBy, invalid }) => <input ref={confirmPasswordRef} id="confirm-password" type="password" autoComplete="new-password" className={inputClass} value={draft.confirmPassword} aria-describedby={describedBy} aria-invalid={invalid} onChange={(event) => updateDraft("confirmPassword", event.target.value)} minLength={8} maxLength={64} disabled={saving} required />}
+          {({ describedBy, invalid }) => <PasswordInput ref={confirmPasswordRef} id="confirm-password" autoComplete="new-password" value={draft.confirmPassword} aria-describedby={describedBy} aria-invalid={invalid} onChange={(event) => updateDraft("confirmPassword", event.target.value)} minLength={8} maxLength={64} disabled={saving} required />}
         </FormField>
 
         <div className="flex justify-end border-t border-line-soft pt-5 sm:col-span-2">

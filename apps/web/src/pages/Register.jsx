@@ -6,6 +6,7 @@ import { Alert, Button, FormField } from "../components/ui";
 import { inputClass } from "../components/ui/styles";
 import { authService } from "../features/auth/authService";
 import { getAuthErrorDetails } from "../features/auth/authErrorMessages";
+import PasswordInput from "../features/auth/components/PasswordInput";
 import { PASSWORD_POLICY_TEXT, validateRegisterFields } from "../features/auth/credentialValidation";
 
 export default function Register() {
@@ -70,25 +71,25 @@ export default function Register() {
       description="完成註冊後即可建立專案並邀請團隊開始協作。"
       footer={<>已經有帳號？<Link to="/login" className="ml-1 inline-flex min-h-11 items-center rounded-control font-semibold text-brand hover:text-brand-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">返回登入</Link></>}
     >
-      <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+      <form className="space-y-5" onSubmit={handleSubmit} noValidate aria-busy={submitting || undefined}>
         <FormField label="姓名" htmlFor="register-name" error={fieldErrors.name} required>
           {({ describedBy, invalid }) => (
-            <input ref={fieldRefs.name} id="register-name" type="text" autoComplete="name" className={inputClass} placeholder="你的姓名" value={form.name} aria-describedby={describedBy} aria-invalid={invalid} onChange={(event) => updateForm("name", event.target.value)} minLength={2} maxLength={50} required />
+            <input ref={fieldRefs.name} id="register-name" type="text" autoComplete="name" className={inputClass} placeholder="你的姓名" value={form.name} aria-describedby={describedBy} aria-invalid={invalid} onChange={(event) => updateForm("name", event.target.value)} minLength={2} maxLength={50} disabled={submitting} required />
           )}
         </FormField>
         <FormField label="Email" htmlFor="register-email" error={fieldErrors.email} required>
           {({ describedBy, invalid }) => (
-            <input ref={fieldRefs.email} id="register-email" type="email" autoComplete="email" className={inputClass} placeholder="you@company.com" value={form.email} aria-describedby={describedBy} aria-invalid={invalid} onChange={(event) => updateForm("email", event.target.value)} required />
+            <input ref={fieldRefs.email} id="register-email" type="email" autoComplete="email" className={inputClass} placeholder="you@company.com" value={form.email} aria-describedby={describedBy} aria-invalid={invalid} onChange={(event) => updateForm("email", event.target.value)} disabled={submitting} required />
           )}
         </FormField>
         <FormField label="密碼" htmlFor="register-password" hint={PASSWORD_POLICY_TEXT} error={fieldErrors.password} required>
           {({ describedBy, invalid }) => (
-            <input ref={fieldRefs.password} id="register-password" type="password" autoComplete="new-password" className={inputClass} placeholder="至少 8 個字元" value={form.password} aria-describedby={describedBy} aria-invalid={invalid} onChange={(event) => updateForm("password", event.target.value)} minLength={8} maxLength={64} required />
+            <PasswordInput ref={fieldRefs.password} id="register-password" autoComplete="new-password" placeholder="至少 8 個字元" value={form.password} aria-describedby={describedBy} aria-invalid={invalid} onChange={(event) => updateForm("password", event.target.value)} minLength={8} maxLength={64} disabled={submitting} required />
           )}
         </FormField>
         <FormField label="確認密碼" htmlFor="register-confirm-password" error={fieldErrors.confirmPassword} required>
           {({ describedBy, invalid }) => (
-            <input ref={fieldRefs.confirmPassword} id="register-confirm-password" type="password" autoComplete="new-password" className={inputClass} placeholder="再次輸入密碼" value={form.confirmPassword} aria-describedby={describedBy} aria-invalid={invalid} onChange={(event) => updateForm("confirmPassword", event.target.value)} minLength={8} maxLength={64} required />
+            <PasswordInput ref={fieldRefs.confirmPassword} id="register-confirm-password" autoComplete="new-password" placeholder="再次輸入密碼" value={form.confirmPassword} aria-describedby={describedBy} aria-invalid={invalid} onChange={(event) => updateForm("confirmPassword", event.target.value)} minLength={8} maxLength={64} disabled={submitting} required />
           )}
         </FormField>
         {formError ? <Alert tone="error">{formError}</Alert> : null}

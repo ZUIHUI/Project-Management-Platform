@@ -10,11 +10,11 @@ const apiError = (status, message) => ({ response: { status, data: { error: { me
 test("turns transport failures into recoverable platform language", () => {
   assert.equal(
     getApiErrorMessage(new TypeError("Failed to fetch"), "fallback"),
-    "目前無法連線至平台服務，請稍後重新整理。",
+    "目前無法連線至平台服務，請稍後再試。",
   );
   assert.equal(
     getApiErrorMessage(apiError(503, "Database unavailable"), "fallback"),
-    "目前無法連線至平台服務，請稍後重新整理。",
+    "目前無法連線至平台服務，請稍後再試。",
   );
 });
 

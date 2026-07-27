@@ -6,6 +6,7 @@ import { Alert, Button, FormField } from "../components/ui";
 import { inputClass } from "../components/ui/styles";
 import { authService } from "../features/auth/authService";
 import { getAuthErrorDetails } from "../features/auth/authErrorMessages";
+import PasswordInput from "../features/auth/components/PasswordInput";
 import { validateLoginFields } from "../features/auth/credentialValidation";
 
 export default function Login() {
@@ -69,15 +70,15 @@ export default function Login() {
     >
       {location.state?.notice ? <Alert tone={noticeTone} className="mb-5">{location.state.notice}</Alert> : null}
 
-      <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+      <form className="space-y-5" onSubmit={handleSubmit} noValidate aria-busy={submitting || undefined}>
         <FormField label="Email" htmlFor="login-email" error={fieldErrors.email} required>
           {({ describedBy, invalid }) => (
-            <input ref={emailRef} id="login-email" type="email" autoComplete="email" className={inputClass} placeholder="you@company.com" value={form.email} aria-describedby={describedBy} aria-invalid={invalid} onChange={(event) => updateForm("email", event.target.value)} required />
+            <input ref={emailRef} id="login-email" type="email" autoComplete="email" className={inputClass} placeholder="you@company.com" value={form.email} aria-describedby={describedBy} aria-invalid={invalid} onChange={(event) => updateForm("email", event.target.value)} disabled={submitting} required />
           )}
         </FormField>
         <FormField label="密碼" htmlFor="login-password" error={fieldErrors.password} required>
           {({ describedBy, invalid }) => (
-            <input ref={passwordRef} id="login-password" type="password" autoComplete="current-password" className={inputClass} placeholder="輸入密碼" value={form.password} aria-describedby={describedBy} aria-invalid={invalid} onChange={(event) => updateForm("password", event.target.value)} required />
+            <PasswordInput ref={passwordRef} id="login-password" autoComplete="current-password" placeholder="輸入密碼" value={form.password} aria-describedby={describedBy} aria-invalid={invalid} onChange={(event) => updateForm("password", event.target.value)} disabled={submitting} required />
           )}
         </FormField>
         {formError ? <Alert tone="error">{formError}</Alert> : null}
