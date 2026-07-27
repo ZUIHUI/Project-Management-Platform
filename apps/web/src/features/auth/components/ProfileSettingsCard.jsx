@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { UserRound } from "lucide-react";
-import { Alert, Button, Card, CardHeader, FormField } from "../../../components/ui";
+import { Alert, Button, Card, CardHeader, FormField, MutationForm } from "../../../components/ui";
 import { inputClass } from "../../../components/ui/styles";
-import { validateProfileInput } from "../credentialValidation";
+import { validateProfileInput } from "../credentialValidation.js";
 
 const draftFromProfile = (profile) => ({ name: profile?.name ?? "", email: profile?.email ?? "" });
 
-export default function ProfileSettingsCard({ profile, saving, error, errorField, notice, onClearFeedback, onSave }) {
+export default function ProfileSettingsCard({ profile, saving, busy = saving, error, errorField, notice, onClearFeedback, onSave }) {
   const [draft, setDraft] = useState(() => draftFromProfile(profile));
   const [fieldErrors, setFieldErrors] = useState({});
   const nameRef = useRef(null);
@@ -40,7 +40,7 @@ export default function ProfileSettingsCard({ profile, saving, error, errorField
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!dirty || saving) return;
+    if (!dirty || busy) return;
     const nextErrors = validateProfileInput(draft.name, draft.email);
     setFieldErrors(nextErrors);
     const firstInvalidField = ["name", "email"].find((field) => nextErrors[field]);
@@ -61,7 +61,7 @@ export default function ProfileSettingsCard({ profile, saving, error, errorField
         description="這些資訊會顯示在帳號與團隊協作介面。"
         action={<span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-surface-strong text-ink"><UserRound size={18} aria-hidden="true" /></span>}
       />
-      <form className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6" onSubmit={handleSubmit} noValidate aria-busy={saving || undefined}>
+      <MutationForm busy={busy} className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6" onSubmit={handleSubmit} noValidate>
         {error && !errorField ? <Alert tone="error" title="無法儲存個人資料" className="sm:col-span-2">{error}</Alert> : null}
         {notice ? <Alert tone="success" className="sm:col-span-2">{notice}</Alert> : null}
 
@@ -77,7 +77,6 @@ export default function ProfileSettingsCard({ profile, saving, error, errorField
               aria-describedby={describedBy}
               aria-invalid={invalid}
               onChange={(event) => updateDraft("name", event.target.value)}
-              disabled={saving}
               required
             />}
         </FormField>
@@ -92,18 +91,17 @@ export default function ProfileSettingsCard({ profile, saving, error, errorField
               aria-describedby={describedBy}
               aria-invalid={invalid}
               onChange={(event) => updateDraft("email", event.target.value)}
-              disabled={saving}
               required
             />}
         </FormField>
 
         <div className="flex flex-col-reverse gap-2 border-t border-line-soft pt-5 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-muted" aria-live="polite">{dirty ? "尚有未儲存的變更。" : "資料已是最新狀態。"}</p>
-          <Button className="w-full sm:w-auto" type="submit" disabled={saving || !dirty || !draft.name.trim() || !draft.email.trim()}>
+          <Button className="w-full sm:w-auto" type="submit" disabled={!dirty || !draft.name.trim() || !draft.email.trim()}>
             {saving ? "儲存中…" : "儲存個人資料"}
           </Button>
         </div>
-      </form>
+      </MutationForm>
     </Card>
   );
 }

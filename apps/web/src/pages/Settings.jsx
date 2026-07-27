@@ -9,6 +9,7 @@ import { useSettingsWorkspace } from "../features/auth/useSettingsWorkspace";
 export default function Settings() {
   const navigate = useNavigate();
   const workspace = useSettingsWorkspace();
+  const accountMutationBusy = workspace.profileSaving || workspace.passwordSaving;
 
   const handleChangePassword = async (currentPassword, newPassword) => {
     const result = await workspace.changePassword(currentPassword, newPassword);
@@ -35,25 +36,31 @@ export default function Settings() {
 
       {!workspace.loading && workspace.profile ? (
         <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(300px,0.8fr)]">
-          <div className="space-y-4">
+          <div className="xl:col-start-1 xl:row-start-1">
             <ProfileSettingsCard
               profile={workspace.profile}
               saving={workspace.profileSaving}
+              busy={accountMutationBusy}
               error={workspace.profileError}
               errorField={workspace.profileErrorField}
               notice={workspace.profileNotice}
               onClearFeedback={workspace.clearProfileFeedback}
               onSave={workspace.updateProfile}
             />
+          </div>
+          <div className="xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:self-stretch">
+            <RoleSummaryCard role={workspace.profile.role} />
+          </div>
+          <div className="xl:col-start-1 xl:row-start-2">
             <PasswordSettingsCard
               saving={workspace.passwordSaving}
+              busy={accountMutationBusy}
               error={workspace.passwordError}
               errorField={workspace.passwordErrorField}
               onClearError={workspace.clearPasswordError}
               onChangePassword={handleChangePassword}
             />
           </div>
-          <RoleSummaryCard role={workspace.profile.role} />
         </div>
       ) : null}
     </div>
